@@ -803,6 +803,8 @@ export default function Dashboard() {
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.75rem",
+                  overflow: "visible", // Penting: biarkan dropdown menu keluar
+                  position: "relative"
                 }}
               >
                 {filtered.map((q) => (

@@ -30,7 +30,12 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="glass-dark"
-      style={{ padding: '1rem', borderRadius: '16px', position: 'relative' }}
+      style={{ 
+        padding: '1rem', 
+        borderRadius: '16px', 
+        position: 'relative',
+        overflow: 'visible' // Penting: biarkan dropdown keluar dari container
+      }}
     >
       {/* Mobile & Desktop Layout */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -55,11 +60,14 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
           </div>
 
           {/* Action Menu Button */}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', zIndex: menuOpen ? 30 : 1 }}>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setMenuOpen(!menuOpen)
+              }}
               style={{
                 background: 'rgba(255,255,255,0.1)',
                 border: '1px solid rgba(255,249,133,0.2)',
@@ -69,7 +77,9 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 2
               }}
               title="Menu aksi"
             >
@@ -81,13 +91,20 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
               {menuOpen && (
                 <>
                   {/* Backdrop */}
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     style={{
                       position: 'fixed',
                       inset: 0,
-                      zIndex: 10
+                      zIndex: 25,
+                      background: 'transparent'
                     }}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMenuOpen(false)
+                    }}
                   />
                   
                   {/* Menu */}
@@ -99,15 +116,16 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
                     className="glass"
                     style={{
                       position: 'absolute',
-                      top: '100%',
+                      top: 'calc(100% + 0.5rem)',
                       right: 0,
-                      marginTop: '0.5rem',
                       minWidth: '180px',
                       padding: '0.5rem',
                       borderRadius: '12px',
-                      zIndex: 20,
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                      zIndex: 30,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                      border: '1px solid rgba(255,249,133,0.2)'
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {/* Edit */}
                     <motion.button

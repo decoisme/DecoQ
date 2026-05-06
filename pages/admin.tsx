@@ -12,10 +12,7 @@ import {
   Upload,
   Inbox,
   Edit2,
-  Trash2,
-  RotateCcw,
   X,
-  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import QRISListItem from "../components/QRISListItem";
@@ -1112,6 +1109,8 @@ export default function Admin() {
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.75rem",
+                  overflow: "visible", // Penting: biarkan dropdown menu keluar
+                  position: "relative"
                 }}
               >
                 {filtered.map((q) => (
