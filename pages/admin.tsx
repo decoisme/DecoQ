@@ -2,6 +2,9 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { Settings, ArrowLeft, CheckCircle, AlertTriangle, Search, Camera, Upload, Inbox } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 const QRScanner = dynamic(() => import('../components/QRScanner'), { ssr: false })
 
@@ -120,15 +123,65 @@ export default function Admin() {
   if (!authed) {
     return (
       <>
-        <Head><title>Admin — QRIS Verifier</title></Head>
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass" style={{ padding: '2.5rem', width: '100%', maxWidth: 420 }}>
+        <Head><title>Admin — DecoQ</title></Head>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'relative', overflow: 'hidden' }}>
+          {/* Background animation */}
+          <motion.div
+            animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+            style={{
+              position: 'absolute',
+              width: 400,
+              height: 400,
+              background: 'radial-gradient(circle, rgba(255,249,133,0.05) 0%, transparent 70%)',
+              borderRadius: '50%',
+              pointerEvents: 'none'
+            }}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 100 }}
+            className="glass"
+            style={{ padding: '2.5rem', width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}
+          >
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚙️</div>
+              <motion.div
+                animate={{
+                  rotate: [0, 10, -10, 0],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                style={{
+                  width: 64,
+                  height: 64,
+                  margin: '0 auto 0.75rem',
+                  background: 'linear-gradient(135deg, rgba(255,249,133,0.15), rgba(255,233,64,0.08))',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,249,133,0.2)'
+                }}
+              >
+                <Settings size={32} color="#fff985" strokeWidth={2.5} />
+              </motion.div>
               <h1 style={{ color: '#fff', fontWeight: 800, fontSize: '1.5rem' }}>Panel Admin</h1>
               <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', marginTop: 6 }}>
                 Masukkan kunci admin untuk melanjutkan
               </p>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <Image src="/logo.svg" alt="DecoQ" width={20} height={20} />
+                <span style={{ color: 'rgba(255,249,133,0.6)', fontSize: '0.75rem', fontWeight: 600 }}>
+                  Powered by DecoQ
+                </span>
+              </motion.div>
             </div>
 
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>
@@ -145,21 +198,52 @@ export default function Admin() {
             />
 
             {authError && (
-              <p style={{ color: '#f87171', fontSize: '0.83rem', marginBottom: '1rem', textAlign: 'center' }}>
-                ⚠️ {authError}
-              </p>
+              <motion.p
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                style={{
+                  color: '#f87171',
+                  fontSize: '0.83rem',
+                  marginBottom: '1rem',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <AlertTriangle size={16} />
+                {authError}
+              </motion.p>
             )}
 
-            <button className="btn-primary" onClick={tryAuth} disabled={authLoading || !adminKey}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {authLoading ? <><div className="spinner" />Memverifikasi...</> : 'Masuk Admin'}
-            </button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-primary"
+              onClick={tryAuth}
+              disabled={authLoading || !adminKey}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              {authLoading ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="spinner"
+                  />
+                  Memverifikasi...
+                </>
+              ) : (
+                'Masuk Admin'
+              )}
+            </motion.button>
 
             <Link href="/" style={{ display: 'block', textAlign: 'center', marginTop: '1.25rem',
               color: 'rgba(255,255,255,0.35)', fontSize: '0.82rem', textDecoration: 'none' }}>
               ← Kembali ke beranda
             </Link>
-          </div>
+          </motion.div>
         </div>
       </>
     )
@@ -167,32 +251,66 @@ export default function Admin() {
 
   return (
     <>
-      <Head><title>Admin — QRIS Verifier</title></Head>
+      <Head><title>Admin — DecoQ</title></Head>
       <div style={{ minHeight: '100vh', maxWidth: 700, margin: '0 auto', padding: '1.5rem 1rem' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Link href="/" style={{ textDecoration: 'none' }}>
-              <button style={{
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,249,133,0.2)',
-                color: '#fff', borderRadius: '10px', padding: '8px 14px', cursor: 'pointer', fontSize: '0.85rem',
-                display: 'flex', alignItems: 'center', gap: 6
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-              </button>
+              <motion.button
+                whileHover={{ scale: 1.05, x: -3 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,249,133,0.2)',
+                  color: '#fff',
+                  borderRadius: '10px',
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <ArrowLeft size={14} strokeWidth={2.5} />
+              </motion.button>
             </Link>
+            <motion.div
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <Image src="/logo.svg" alt="DecoQ" width={32} height={32} />
+            </motion.div>
             <div>
               <h1 style={{ color: '#fff', fontWeight: 800, fontSize: '1.3rem' }}>Panel Admin</h1>
-              <span className="tag tag-neutral" style={{ fontSize: '0.7rem' }}>Terautentikasi ✓</span>
+              <span className="tag tag-neutral" style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle size={12} />
+                Terautentikasi
+              </span>
             </div>
           </div>
-          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', delay: 0.3 }}
+            style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}
+          >
             <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem' }}>Total QRIS</span>
-            <span style={{ color: '#fff985', fontWeight: 700, fontSize: '1.5rem' }}>{list.filter(q => q.is_active).length}</span>
-          </div>
-        </div>
+            <motion.span
+              key={list.filter(q => q.is_active).length}
+              initial={{ scale: 1.5, color: '#fff985' }}
+              animate={{ scale: 1, color: '#fff985' }}
+              style={{ fontWeight: 700, fontSize: '1.5rem' }}
+            >
+              {list.filter(q => q.is_active).length}
+            </motion.span>
+          </motion.div>
+        </motion.div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
@@ -266,7 +384,10 @@ export default function Admin() {
               {/* QRIS Data */}
               <div>
                 <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', display: 'block', marginBottom: 8 }}>
-                  Data QRIS * {form.rawQRIS && <span className="tag tag-success" style={{ marginLeft: 6, fontSize: '0.68rem' }}>✓ Terisi</span>}
+                  Data QRIS * {form.rawQRIS && <span className="tag tag-success" style={{ marginLeft: 6, fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle size={10} />
+                    Terisi
+                  </span>}
                 </label>
 
                 {!form.rawQRIS && (
@@ -286,13 +407,15 @@ export default function Admin() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                         <button className="btn-secondary" onClick={() => setScanning(true)}
                           style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                          📷 Scan QRIS
+                          <Camera size={16} />
+                          Scan QRIS
                         </button>
                         <label className="btn-secondary" style={{
                           fontSize: '0.85rem', display: 'flex', alignItems: 'center',
                           justifyContent: 'center', gap: 6, cursor: 'pointer'
                         }}>
-                          📁 Upload File
+                          <Upload size={16} />
+                          Upload File
                           <input type="file" accept="image/*" style={{ display: 'none' }}
                             onChange={async e => {
                               const file = e.target.files?.[0]
@@ -334,8 +457,9 @@ export default function Admin() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8
                   }}>
                     <div>
-                      <p style={{ color: '#4ade80', fontWeight: 600, fontSize: '0.85rem', marginBottom: 2 }}>
-                        ✓ Data QRIS terisi
+                      <p style={{ color: '#4ade80', fontWeight: 600, fontSize: '0.85rem', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle size={16} />
+                        Data QRIS terisi
                       </p>
                       <p style={{
                         fontFamily: 'Space Mono, monospace', fontSize: '0.68rem',
@@ -361,8 +485,9 @@ export default function Admin() {
                 background: regResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
                 border: `1px solid ${regResult.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
               }}>
-                <p style={{ color: regResult.success ? '#4ade80' : '#f87171', fontWeight: 600, fontSize: '0.88rem', marginBottom: regResult.hash ? 4 : 0 }}>
-                  {regResult.success ? '✅ ' : '⚠️ '}{regResult.message || regResult.error}
+                <p style={{ color: regResult.success ? '#4ade80' : '#f87171', fontWeight: 600, fontSize: '0.88rem', marginBottom: regResult.hash ? 4 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {regResult.success ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                  {regResult.message || regResult.error}
                 </p>
                 {regResult.hash && (
                   <p style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', marginTop: 4, wordBreak: 'break-all' }}>
@@ -382,8 +507,11 @@ export default function Admin() {
         {/* List Tab */}
         {tab === 'list' && (
           <div>
-            <div style={{ marginBottom: '1rem' }}>
-              <input className="input-glass" placeholder="🔍 Cari merchant atau ID..."
+            <div style={{ marginBottom: '1rem', position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <Search size={16} color="rgba(255,255,255,0.3)" />
+              </div>
+              <input className="input-glass" placeholder="Cari merchant atau ID..." style={{ paddingLeft: '2.5rem' }}
                 value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
 
@@ -396,7 +524,7 @@ export default function Admin() {
               </div>
             ) : filtered.length === 0 ? (
               <div className="glass" style={{ padding: '3rem', textAlign: 'center' }}>
-                <p style={{ fontSize: '2rem', marginBottom: 8 }}>📭</p>
+                <Inbox size={48} color="rgba(255,255,255,0.2)" style={{ margin: '0 auto 12px' }} />
                 <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
                   {searchTerm ? 'Tidak ada hasil pencarian' : 'Belum ada QRIS terdaftar'}
                 </p>

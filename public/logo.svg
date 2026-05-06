@@ -1,0 +1,26 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="60" cy="60" r="58" fill="url(#gradient)" stroke="#fff985" stroke-width="2"/>
+  
+  <!-- QR Code Pattern -->
+  <rect x="30" y="30" width="60" height="60" rx="4" fill="none" stroke="#12120a" stroke-width="2"/>
+  
+  <!-- Decorative QR blocks -->
+  <rect x="35" y="35" width="10" height="10" rx="2" fill="#12120a"/>
+  <rect x="75" y="35" width="10" height="10" rx="2" fill="#12120a"/>
+  <rect x="35" y="75" width="10" height="10" rx="2" fill="#12120a"/>
+  
+  <!-- Center Shield -->
+  <path d="M60 45 L52 48 L52 58 C52 63 56 66 60 68 C64 66 68 63 68 58 L68 48 Z" fill="#12120a" stroke="#fff985" stroke-width="1.5"/>
+  <path d="M60 52 L56 54 L56 59 C56 61 58 62.5 60 63.5 C62 62.5 64 61 64 59 L64 54 Z" fill="#fff985"/>
+  
+  <!-- Checkmark -->
+  <path d="M58 58 L59.5 60 L62 56" stroke="#12120a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff985;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffe940;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>
