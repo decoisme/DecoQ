@@ -8,7 +8,8 @@ import {
   Crown,
   Eye,
   Menu,
-  X as CloseIcon
+  X as CloseIcon,
+  PlusCircle
 } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
@@ -26,6 +27,7 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
 
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'register', label: 'Register QRIS', icon: PlusCircle },
     { id: 'qris', label: 'QRIS Database', icon: Database },
     { id: 'verification', label: 'Verification Logs', icon: FileText },
     { id: 'audit', label: 'Audit Logs', icon: Shield },

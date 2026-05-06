@@ -18,6 +18,7 @@ import AuditLogsTable from "../components/AuditLogsTable";
 import QRISListItem from "../components/QRISListItem";
 import RestrictionModal from "../components/RestrictionModal";
 import ManageAdminTab from "../components/ManageAdminTab";
+import RegisterQRISTab from "../components/RegisterQRISTab";
 
 type AdminRole = 'admin' | 'superadmin'
 
@@ -449,6 +450,27 @@ export default function DashboardNew() {
                     </button>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Register QRIS Tab */}
+            {activeTab === 'register' && (
+              <motion.div
+                key="register"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <RegisterQRISTab 
+                  sessionToken={sessionToken}
+                  onSuccess={() => {
+                    // Refresh stats and list after successful registration
+                    fetchStats();
+                    fetchList();
+                    // Switch to QRIS Database tab
+                    setActiveTab('qris');
+                  }}
+                />
               </motion.div>
             )}
 
