@@ -328,7 +328,7 @@ export default function Home() {
                   Panel Admin
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.95rem', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>
-                  Daftarkan QRIS merchant baru, kelola database, dan pantau log verifikasi.
+                  Daftarkan QRIS merchant baru, kelola database, dan pantau log verifikasi secara real-time.
                 </p>
 
                 <motion.div
