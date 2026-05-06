@@ -36,19 +36,35 @@ export default function Login() {
       }
 
       if (data.user) {
+        console.log('✅ Login successful, user ID:', data.user.id)
+        console.log('📧 Email:', data.user.email)
+        
         // Check if user exists in users table
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('role, is_active')
+          .select('role, is_active, email, auth_user_id')
           .eq('auth_user_id', data.user.id)
           .single()
 
-        if (userError || !userData) {
-          setError('User tidak ditemukan dalam sistem')
+        console.log('🔍 Query result:', { userData, userError })
+
+        if (userError) {
+          console.error('❌ User query error:', userError)
+          setError(`User tidak ditemukan dalam sistem (Error: ${userError.message})`)
           await supabase.auth.signOut()
           setLoading(false)
           return
         }
+
+        if (!userData) {
+          console.error('❌ User data is null')
+          setError('User tidak ditemukan dalam sistem (Data null)')
+          await supabase.auth.signOut()
+          setLoading(false)
+          return
+        }
+
+        console.log('✅ User found:', userData)
 
         if (!userData.is_active) {
           setError('Akun Anda tidak aktif. Hubungi administrator.')
@@ -70,6 +86,7 @@ export default function Login() {
           role: userData.role
         })
 
+        console.log('🚀 Redirecting to dashboard...')
         // Redirect to dashboard
         router.push('/dashboard')
       }
