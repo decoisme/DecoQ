@@ -1,6 +1,8 @@
 import Head from "next/head";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/router";
+import { createClient } from "@supabase/supabase-js";
 import {
   Settings,
   AlertTriangle,
@@ -41,13 +43,19 @@ type DashboardStats = {
 }
 
 export default function DashboardNew() {
+  const router = useRouter();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  );
+
   const [activeTab, setActiveTab] = useState<string>("overview");
-  const [adminKey, setAdminKey] = useState("");
+  const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(false);
   const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
   const [adminName, setAdminName] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [sessionToken, setSessionToken] = useState("");
 
   // Stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -65,45 +73,67 @@ export default function DashboardNew() {
     action: string;
   }>({ isOpen: false, action: "" });
 
-  const tryAuth = async () => {
-    setAuthLoading(true);
-    setAuthError("");
-    
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
     try {
-      const authRes = await fetch("/api/auth-admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminKey }),
-      });
-
-      const authData = await authRes.json();
-
-      if (authRes.status === 401 || !authData.success) {
-        setAuthError(authData.error || "Kunci admin salah. Coba lagi.");
-        setAuthLoading(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/auth/login');
         return;
       }
 
-      setAdminRole(authData.role);
-      setAdminName(authData.name);
+      // Get user role from users table
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('role, full_name, email, is_active')
+        .eq('auth_user_id', session.user.id)
+        .single();
+
+      if (error || !userData) {
+        alert('User tidak ditemukan dalam sistem');
+        await supabase.auth.signOut();
+        router.push('/auth/login');
+        return;
+      }
+
+      if (!userData.is_active) {
+        alert('Akun Anda tidak aktif. Hubungi administrator.');
+        await supabase.auth.signOut();
+        router.push('/auth/login');
+        return;
+      }
+
+      setAdminRole(userData.role as AdminRole);
+      setAdminName(userData.full_name || userData.email);
+      setAdminEmail(userData.email);
+      setSessionToken(session.access_token);
       setAuthed(true);
 
       // Fetch initial data
       await Promise.all([
-        fetchStats(),
-        fetchList()
+        fetchStats(session.access_token),
+        fetchList(session.access_token)
       ]);
-    } catch {
-      setAuthError("Gagal terhubung ke server.");
+    } catch (error) {
+      console.error('Auth check error:', error);
+      router.push('/auth/login');
+    } finally {
+      setLoading(false);
     }
-    setAuthLoading(false);
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (token?: string) => {
     setStatsLoading(true);
     try {
       const res = await fetch("/api/dashboard-stats", {
-        headers: { "x-admin-key": adminKey },
+        headers: { 
+          "Authorization": `Bearer ${token || sessionToken}`
+        },
       });
       const json = await res.json();
       if (json.success) {
@@ -115,11 +145,13 @@ export default function DashboardNew() {
     setStatsLoading(false);
   };
 
-  const fetchList = async () => {
+  const fetchList = async (token?: string) => {
     setListLoading(true);
     try {
       const res = await fetch("/api/list", {
-        headers: { "x-admin-key": adminKey },
+        headers: { 
+          "Authorization": `Bearer ${token || sessionToken}`
+        },
       });
       const json = await res.json();
       setList(json.data || []);
@@ -131,14 +163,9 @@ export default function DashboardNew() {
     setRestrictionModal({ isOpen: true, action });
   };
 
-  const handleLogout = () => {
-    setAuthed(false);
-    setAdminKey("");
-    setAdminRole(null);
-    setAdminName("");
-    setStats(null);
-    setList([]);
-    setActiveTab("overview");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/auth/login');
   };
 
   const handleDeactivate = async (id: string) => {
@@ -151,7 +178,10 @@ export default function DashboardNew() {
     
     const res = await fetch("/api/list", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${sessionToken}`
+      },
       body: JSON.stringify({ id }),
     });
 
@@ -174,7 +204,10 @@ export default function DashboardNew() {
     
     const res = await fetch("/api/list", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${sessionToken}`
+      },
       body: JSON.stringify({ id, action: "activate" }),
     });
     
@@ -208,7 +241,10 @@ export default function DashboardNew() {
 
     const res = await fetch("/api/list", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${sessionToken}`
+      },
       body: JSON.stringify({ id, confirm: "DELETE_PERMANENT" }),
     });
 
@@ -242,164 +278,28 @@ export default function DashboardNew() {
       q.merchant_id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // Auth screen
-  if (!authed) {
+  // Loading screen
+  if (loading) {
     return (
       <>
         <Head>
           <title>Dashboard Admin — DecoQ</title>
         </Head>
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <motion.div
-            animate={{ rotate: 360, scale: [1, 1.2, 1] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            style={{
-              position: "absolute",
-              width: 400,
-              height: 400,
-              background:
-                "radial-gradient(circle, rgba(255,249,133,0.05) 0%, transparent 70%)",
-              borderRadius: "50%",
-              pointerEvents: "none",
-            }}
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100 }}
-            className="glass"
-            style={{
-              padding: "2.5rem",
-              width: "100%",
-              maxWidth: 420,
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-              <motion.div
-                animate={{
-                  rotate: [0, 10, -10, 0],
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
-                style={{
-                  width: 64,
-                  height: 64,
-                  margin: "0 auto 0.75rem",
-                  background:
-                    "linear-gradient(135deg, rgba(255,249,133,0.15), rgba(255,233,64,0.08))",
-                  borderRadius: "20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "1px solid rgba(255,249,133,0.2)",
-                }}
-              >
-                <Settings size={32} color="#fff985" strokeWidth={2.5} />
-              </motion.div>
-              <h1
-                style={{ color: "#fff", fontWeight: 800, fontSize: "1.5rem" }}
-              >
-                Dashboard Admin
-              </h1>
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.45)",
-                  fontSize: "0.85rem",
-                  marginTop: 6,
-                }}
-              >
-                Masukkan kunci admin untuk melanjutkan
-              </p>
-            </div>
-
-            <label
-              style={{
-                color: "rgba(255,255,255,0.6)",
-                fontSize: "0.82rem",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Kunci Admin
-            </label>
-            <input
-              type="password"
-              className="input-glass"
-              placeholder="Masukkan kunci admin..."
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && tryAuth()}
-              style={{ marginBottom: "1rem" }}
-            />
-
-            {authError && (
-              <motion.p
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                style={{
-                  color: "#f87171",
-                  fontSize: "0.83rem",
-                  marginBottom: "1rem",
-                  textAlign: "center",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <AlertTriangle size={16} />
-                {authError}
-              </motion.p>
-            )}
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="btn-primary"
-              onClick={tryAuth}
-              disabled={authLoading || !adminKey}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              {authLoading ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="spinner"
-                  />
-                  Memverifikasi...
-                </>
-              ) : (
-                "Masuk Dashboard"
-              )}
-            </motion.button>
-          </motion.div>
+        <div style={{ 
+          minHeight: '100vh', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}>
+          <div className="spinner" style={{ width: 40, height: 40 }} />
         </div>
       </>
     );
+  }
+
+  // Not authed (should not reach here due to redirect)
+  if (!authed) {
+    return null;
   }
 
   return (
@@ -618,7 +518,7 @@ export default function DashboardNew() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <VerificationLogsTable adminKey={adminKey} />
+                <VerificationLogsTable sessionToken={sessionToken} />
               </motion.div>
             )}
 
@@ -630,7 +530,7 @@ export default function DashboardNew() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <AuditLogsTable adminKey={adminKey} />
+                <AuditLogsTable sessionToken={sessionToken} />
               </motion.div>
             )}
           </AnimatePresence>

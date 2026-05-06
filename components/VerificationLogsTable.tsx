@@ -23,10 +23,10 @@ type VerificationLog = {
 }
 
 type Props = {
-  adminKey: string
+  sessionToken: string
 }
 
-export default function VerificationLogsTable({ adminKey }: Props) {
+export default function VerificationLogsTable({ sessionToken }: Props) {
   const [logs, setLogs] = useState<VerificationLog[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -46,7 +46,7 @@ export default function VerificationLogsTable({ adminKey }: Props) {
       })
 
       const res = await fetch(`/api/verification-logs?${params}`, {
-        headers: { 'x-admin-key': adminKey }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
       const data = await res.json()
 
@@ -78,7 +78,7 @@ export default function VerificationLogsTable({ adminKey }: Props) {
       })
 
       const res = await fetch(`/api/export-logs?${params}`, {
-        headers: { 'x-admin-key': adminKey }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       const blob = await res.blob()

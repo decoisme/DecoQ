@@ -23,7 +23,7 @@ type AuditLog = {
 }
 
 type Props = {
-  adminKey: string
+  sessionToken: string
 }
 
 const actionColors: Record<string, string> = {
@@ -34,7 +34,7 @@ const actionColors: Record<string, string> = {
   DEACTIVATE: '#fbbf24'
 }
 
-export default function AuditLogsTable({ adminKey }: Props) {
+export default function AuditLogsTable({ sessionToken }: Props) {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState<string>('all')
@@ -54,7 +54,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
       })
 
       const res = await fetch(`/api/audit-logs?${params}`, {
-        headers: { 'x-admin-key': adminKey }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
       const data = await res.json()
 
@@ -76,7 +76,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
     setExporting(true)
     try {
       const res = await fetch('/api/export-logs?type=audit', {
-        headers: { 'x-admin-key': adminKey }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       const blob = await res.blob()
