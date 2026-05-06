@@ -174,10 +174,22 @@ Environment variables sudah setup. Lanjut ke:
 
 **Step 5: Install Dependencies**
 ```bash
-npm install @supabase/auth-helpers-nextjs @supabase/supabase-js
+npm install @supabase/supabase-js
 ```
 
-**Step 6: Test Login**
+**Note:** Hanya perlu `@supabase/supabase-js` saja, TIDAK perlu `@supabase/auth-helpers-nextjs` (deprecated)
+
+**Step 6: Test Build**
+```bash
+npm run build
+```
+
+**Step 7: Run Dev Server**
+```bash
+npm run dev
+```
+
+**Step 8: Test Login**
 ```
 http://localhost:3000/auth/login
 ```

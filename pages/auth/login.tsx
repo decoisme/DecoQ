@@ -3,12 +3,15 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, AlertTriangle, LogIn } from 'lucide-react'
 import { useRouter } from 'next/router'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
 export default function Login() {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  )
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

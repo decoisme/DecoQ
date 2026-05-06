@@ -15,7 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { useRouter } from 'next/router'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 
 type User = {
   id: string
@@ -42,7 +42,10 @@ type Stats = {
 
 export default function ManageAdmin() {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  )
   
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
