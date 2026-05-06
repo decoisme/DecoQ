@@ -275,7 +275,7 @@ export default function Home() {
             </Link>
 
             {/* Admin Card */}
-            <Link href="/admin" style={{ textDecoration: 'none' }}>
+            <Link href="/dashboard" style={{ textDecoration: 'none' }}>
               <motion.div
                 className="glass-dark"
                 whileHover={{ y: -8, scale: 1.02 }}
@@ -325,7 +325,7 @@ export default function Home() {
                 </motion.div>
 
                 <h2 style={{ color: '#ffffff', fontWeight: 700, fontSize: '1.3rem', marginBottom: '0.5rem', position: 'relative', zIndex: 1 }}>
-                  Panel Admin
+                  Dashboard Admin
                 </h2>
                 <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.95rem', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>
                   Daftarkan QRIS merchant baru, kelola database, dan pantau log verifikasi secara real-time.
@@ -345,7 +345,7 @@ export default function Home() {
                     zIndex: 1
                   }}
                 >
-                  Masuk Admin
+                  Masuk Dashboard
                   <ArrowRight size={18} strokeWidth={2.5} />
                 </motion.div>
               </motion.div>

@@ -1,16 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { supabaseAdmin } from '../../lib/supabase'
-
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123'
+import { verifyAdminKey } from './auth-admin'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const adminKey = req.headers['x-admin-key'] || req.query.adminKey
+  const adminKey = req.headers['x-admin-key'] as string || req.query.adminKey as string
 
-  if (adminKey !== ADMIN_SECRET) {
+  // Verify admin key and get role
+  const session = verifyAdminKey(adminKey)
+  
+  if (!session) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  // GET - List all QRIS
+  // GET - List all QRIS (both admin and superadmin can view)
   if (req.method === 'GET') {
     const { data, error } = await supabaseAdmin
       .from('qris_registry')
@@ -18,11 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .order('registered_at', { ascending: false })
 
     if (error) return res.status(500).json({ error: error.message })
-    return res.status(200).json({ data })
+    return res.status(200).json({ data, role: session.role })
   }
 
-  // DELETE - Soft delete (deactivate)
+  // DELETE - Soft delete (deactivate) - SUPERADMIN ONLY
   if (req.method === 'DELETE') {
+    if (session.role !== 'superadmin') {
+      return res.status(403).json({ 
+        error: 'Akses ditolak. Hanya Superadmin yang dapat menonaktifkan QRIS.',
+        requiredRole: 'superadmin',
+        currentRole: session.role
+      })
+    }
+
     const { id } = req.body
     const { error } = await supabaseAdmin
       .from('qris_registry')
@@ -33,8 +43,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ success: true, message: 'QRIS dinonaktifkan' })
   }
 
-  // PATCH - Activate or update QRIS
+  // PATCH - Activate or update QRIS - SUPERADMIN ONLY
   if (req.method === 'PATCH') {
+    if (session.role !== 'superadmin') {
+      return res.status(403).json({ 
+        error: 'Akses ditolak. Hanya Superadmin yang dapat mengubah data QRIS.',
+        requiredRole: 'superadmin',
+        currentRole: session.role
+      })
+    }
+
     const { id, action, ...updateData } = req.body
 
     if (action === 'activate') {
@@ -67,8 +85,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid action' })
   }
 
-  // PUT - Hard delete (permanent)
+  // PUT - Hard delete (permanent) - SUPERADMIN ONLY
   if (req.method === 'PUT') {
+    if (session.role !== 'superadmin') {
+      return res.status(403).json({ 
+        error: 'Akses ditolak. Hanya Superadmin yang dapat menghapus QRIS secara permanen.',
+        requiredRole: 'superadmin',
+        currentRole: session.role
+      })
+    }
+
     const { id, confirm } = req.body
 
     if (confirm !== 'DELETE_PERMANENT') {
