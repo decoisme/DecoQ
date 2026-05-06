@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import QRISListItem from "../components/QRISListItem";
 
 const QRScanner = dynamic(() => import("../components/QRScanner"), {
   ssr: false,
@@ -1144,208 +1145,14 @@ export default function Admin() {
                 }}
               >
                 {filtered.map((q) => (
-                  <motion.div
+                  <QRISListItem
                     key={q.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass-dark"
-                    style={{ padding: "1.25rem", borderRadius: "16px" }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 12,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            marginBottom: 4,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: "#fff",
-                              fontWeight: 700,
-                              fontSize: "0.95rem",
-                            }}
-                          >
-                            {q.merchant_name}
-                          </span>
-                          <span
-                            className={`tag ${q.is_active ? "tag-success" : "tag-danger"}`}
-                            style={{ fontSize: "0.68rem" }}
-                          >
-                            {q.is_active ? "● Aktif" : "○ Nonaktif"}
-                          </span>
-                          <span
-                            className="tag tag-neutral"
-                            style={{ fontSize: "0.68rem" }}
-                          >
-                            {q.category}
-                          </span>
-                        </div>
-                        <p
-                          style={{
-                            color: "rgba(255,255,255,0.4)",
-                            fontSize: "0.78rem",
-                            marginBottom: 4,
-                          }}
-                        >
-                          ID: {q.merchant_id} ·{" "}
-                          {new Date(q.registered_at).toLocaleDateString(
-                            "id-ID",
-                          )}
-                        </p>
-                        {q.notes && (
-                          <p
-                            style={{
-                              color: "rgba(255,255,255,0.35)",
-                              fontSize: "0.75rem",
-                              fontStyle: "italic",
-                              marginBottom: 4,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                          >
-                            <FileText size={12} />
-                            {q.notes}
-                          </p>
-                        )}
-                        <p
-                          style={{
-                            fontFamily: "Space Mono, monospace",
-                            fontSize: "0.62rem",
-                            color: "rgba(255,249,133,0.4)",
-                            marginTop: 4,
-                            overflow: "hidden",
-                            whiteSpace: "nowrap",
-                            textOverflow: "ellipsis",
-                            maxWidth: "100%",
-                          }}
-                        >
-                          {q.hash}
-                        </p>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "0.5rem",
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        {/* Edit button */}
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => openEditModal(q)}
-                          style={{
-                            background: "rgba(59,130,246,0.15)",
-                            border: "1px solid rgba(59,130,246,0.3)",
-                            color: "#60a5fa",
-                            borderRadius: "8px",
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                          title="Edit data QRIS"
-                        >
-                          <Edit2 size={14} />
-                          Edit
-                        </motion.button>
-
-                        {q.is_active ? (
-                          /* Deactivate button */
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleDeactivate(q.id)}
-                            style={{
-                              background: "rgba(251,191,36,0.15)",
-                              border: "1px solid rgba(251,191,36,0.3)",
-                              color: "#fbbf24",
-                              borderRadius: "8px",
-                              padding: "6px 10px",
-                              cursor: "pointer",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                            title="Nonaktifkan QRIS"
-                          >
-                            <X size={14} />
-                            Nonaktif
-                          </motion.button>
-                        ) : (
-                          /* Activate button */
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleActivate(q.id)}
-                            style={{
-                              background: "rgba(34,197,94,0.15)",
-                              border: "1px solid rgba(34,197,94,0.3)",
-                              color: "#4ade80",
-                              borderRadius: "8px",
-                              padding: "6px 10px",
-                              cursor: "pointer",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                            title="Aktifkan kembali QRIS"
-                          >
-                            <RotateCcw size={14} />
-                            Aktifkan
-                          </motion.button>
-                        )}
-
-                        {/* Delete permanent button */}
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() =>
-                            handleDeletePermanent(q.id, q.merchant_name)
-                          }
-                          style={{
-                            background: "rgba(239,68,68,0.15)",
-                            border: "1px solid rgba(239,68,68,0.3)",
-                            color: "#f87171",
-                            borderRadius: "8px",
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                          title="Hapus permanen (tidak dapat dibatalkan)"
-                        >
-                          <Trash2 size={14} />
-                          Hapus
-                        </motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
+                    qris={q}
+                    onEdit={() => openEditModal(q)}
+                    onActivate={() => handleActivate(q.id)}
+                    onDeactivate={() => handleDeactivate(q.id)}
+                    onDelete={() => handleDeletePermanent(q.id, q.merchant_name)}
+                  />
                 ))}
               </div>
             )}
