@@ -465,7 +465,7 @@ export default function Admin() {
       <div
         style={{
           minHeight: "100vh",
-          maxWidth: 700,
+          maxWidth: 560,
           margin: "0 auto",
           padding: "1.5rem 1rem",
         }}
