@@ -585,6 +585,127 @@ export default function Verify() {
                       </p>
                     </div>
 
+                    {/* Show scanned merchant info even when not verified */}
+                    {scannedMerchantInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        style={{
+                          background: "rgba(255,249,133,0.06)",
+                          borderRadius: "14px",
+                          border: "1px solid rgba(255,249,133,0.2)",
+                          padding: "1.25rem",
+                          marginBottom: "1.25rem",
+                        }}
+                      >
+                        <p
+                          style={{
+                            color: "rgba(255,255,255,0.4)",
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            marginBottom: "0.75rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Info size={14} />
+                          Info Merchant Terdeteksi
+                        </p>
+                        {scannedMerchantInfo.merchantName && (
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              padding: "0.4rem 0",
+                              borderBottom: "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "rgba(255,255,255,0.45)",
+                                fontSize: "0.83rem",
+                              }}
+                            >
+                              Nama
+                            </span>
+                            <span
+                              style={{
+                                color: "#fff985",
+                                fontWeight: 600,
+                                fontSize: "0.83rem",
+                                textAlign: "right",
+                                maxWidth: "60%",
+                              }}
+                            >
+                              {scannedMerchantInfo.merchantName}
+                            </span>
+                          </div>
+                        )}
+                        {scannedMerchantInfo.merchantId && (
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              padding: "0.4rem 0",
+                              borderBottom: "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "rgba(255,255,255,0.45)",
+                                fontSize: "0.83rem",
+                              }}
+                            >
+                              NMID
+                            </span>
+                            <span
+                              style={{
+                                color: "#fff985",
+                                fontWeight: 600,
+                                fontSize: "0.83rem",
+                                fontFamily: "Space Mono, monospace",
+                                textAlign: "right",
+                              }}
+                            >
+                              {scannedMerchantInfo.merchantId}
+                            </span>
+                          </div>
+                        )}
+                        {scannedMerchantInfo.merchantCity && (
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              padding: "0.4rem 0",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "rgba(255,255,255,0.45)",
+                                fontSize: "0.83rem",
+                              }}
+                            >
+                              Kota
+                            </span>
+                            <span
+                              style={{
+                                color: "#fff",
+                                fontWeight: 600,
+                                fontSize: "0.83rem",
+                                textAlign: "right",
+                              }}
+                            >
+                              {scannedMerchantInfo.merchantCity}
+                            </span>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+
                     <div
                       style={{
                         background: "rgba(239,68,68,0.08)",
