@@ -93,8 +93,8 @@ export default function Home() {
               whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
               transition={{ type: 'spring', stiffness: 300 }}
               style={{
-                width: 100,
-                height: 100,
+                width: 110,
+                height: 110,
                 margin: '0 auto 1.5rem',
                 position: 'relative',
                 cursor: 'pointer'
@@ -113,14 +113,24 @@ export default function Home() {
                   width: '100%',
                   height: '100%',
                   borderRadius: '28px',
-                  overflow: 'hidden',
-                  background: 'linear-gradient(135deg, #fff985, #ffe940)',
+                  background: 'rgba(255,249,133,0.08)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,249,133,0.2)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  padding: '15px'
                 }}
               >
-                <Image src="/logo.svg" alt="DecoQ Logo" width={80} height={80} priority />
+                <Image 
+                  src="/logo.svg" 
+                  alt="DecoQ Logo" 
+                  width={80} 
+                  height={80} 
+                  priority 
+                  style={{ objectFit: 'contain' }}
+                />
               </motion.div>
               
               {/* Sparkle effect */}
