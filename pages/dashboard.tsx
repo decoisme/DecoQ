@@ -57,6 +57,7 @@ export default function DashboardNew() {
   const [list, setList] = useState<QRISEntry[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Restriction modal
   const [restrictionModal, setRestrictionModal] = useState<{
@@ -600,6 +601,8 @@ export default function DashboardNew() {
                         onActivate={() => handleActivate(q.id)}
                         onDeactivate={() => handleDeactivate(q.id)}
                         onDelete={() => handleDeletePermanent(q.id, q.merchant_name)}
+                        isMenuOpen={openMenuId === q.id}
+                        onMenuToggle={() => setOpenMenuId(openMenuId === q.id ? null : q.id)}
                       />
                     ))}
                   </div>

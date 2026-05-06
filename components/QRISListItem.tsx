@@ -20,13 +20,15 @@ type Props = {
   onActivate: () => void
   onDeactivate: () => void
   onDelete: () => void
+  isMenuOpen: boolean
+  onMenuToggle: () => void
 }
 
-export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, onDelete }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false)
+export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, onDelete, isMenuOpen, onMenuToggle }: Props) {
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="glass-dark"
@@ -34,7 +36,7 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
         padding: '1rem', 
         borderRadius: '16px', 
         position: 'relative',
-        overflow: 'visible' // Penting: biarkan dropdown keluar dari container
+        overflow: 'visible'
       }}
     >
       {/* Mobile & Desktop Layout */}
@@ -60,17 +62,17 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
           </div>
 
           {/* Action Menu Button */}
-          <div style={{ position: 'relative', zIndex: menuOpen ? 30 : 1 }}>
+          <div style={{ position: 'relative' }}>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation()
-                setMenuOpen(!menuOpen)
+                onMenuToggle()
               }}
               style={{
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,249,133,0.2)',
+                background: isMenuOpen ? 'rgba(255,249,133,0.15)' : 'rgba(255,255,255,0.1)',
+                border: `1px solid ${isMenuOpen ? 'rgba(255,249,133,0.4)' : 'rgba(255,249,133,0.2)'}`,
                 color: '#fff',
                 borderRadius: '8px',
                 padding: '8px',
@@ -78,178 +80,12 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative',
-                zIndex: 2
+                transition: 'all 0.2s'
               }}
               title="Menu aksi"
             >
               <MoreVertical size={18} />
             </motion.button>
-
-            {/* Dropdown Menu */}
-            <AnimatePresence>
-              {menuOpen && (
-                <>
-                  {/* Backdrop */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      position: 'fixed',
-                      inset: 0,
-                      zIndex: 25,
-                      background: 'transparent'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setMenuOpen(false)
-                    }}
-                  />
-                  
-                  {/* Menu */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                    transition={{ duration: 0.15 }}
-                    className="glass"
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 0.5rem)',
-                      right: 0,
-                      minWidth: '180px',
-                      padding: '0.5rem',
-                      borderRadius: '12px',
-                      zIndex: 30,
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-                      border: '1px solid rgba(255,249,133,0.2)'
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Edit */}
-                    <motion.button
-                      whileHover={{ backgroundColor: 'rgba(59,130,246,0.15)' }}
-                      onClick={() => {
-                        onEdit()
-                        setMenuOpen(false)
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#60a5fa',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                    >
-                      <Edit2 size={16} />
-                      Edit Data
-                    </motion.button>
-
-                    {/* Activate/Deactivate */}
-                    {qris.is_active ? (
-                      <motion.button
-                        whileHover={{ backgroundColor: 'rgba(251,191,36,0.15)' }}
-                        onClick={() => {
-                          onDeactivate()
-                          setMenuOpen(false)
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#fbbf24',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          textAlign: 'left',
-                          transition: 'background 0.2s'
-                        }}
-                      >
-                        <X size={16} />
-                        Nonaktifkan
-                      </motion.button>
-                    ) : (
-                      <motion.button
-                        whileHover={{ backgroundColor: 'rgba(34,197,94,0.15)' }}
-                        onClick={() => {
-                          onActivate()
-                          setMenuOpen(false)
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '0.75rem',
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#4ade80',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          textAlign: 'left',
-                          transition: 'background 0.2s'
-                        }}
-                      >
-                        <RotateCcw size={16} />
-                        Aktifkan Kembali
-                      </motion.button>
-                    )}
-
-                    {/* Divider */}
-                    <div style={{ 
-                      height: '1px', 
-                      background: 'rgba(255,255,255,0.1)', 
-                      margin: '0.5rem 0' 
-                    }} />
-
-                    {/* Delete */}
-                    <motion.button
-                      whileHover={{ backgroundColor: 'rgba(239,68,68,0.15)' }}
-                      onClick={() => {
-                        onDelete()
-                        setMenuOpen(false)
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#f87171',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                    >
-                      <Trash2 size={16} />
-                      Hapus Permanen
-                    </motion.button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
           </div>
         </div>
 
@@ -330,6 +166,142 @@ export default function QRISListItem({ qris, onEdit, onActivate, onDeactivate, o
           </details>
         </div>
       </div>
+
+      {/* Dropdown Menu - Expanded Below */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            layout
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              marginTop: '1rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid rgba(255,249,133,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}>
+              {/* Edit */}
+              <motion.button
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(59,130,246,0.15)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  onEdit()
+                  onMenuToggle()
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(59,130,246,0.08)',
+                  border: '1px solid rgba(59,130,246,0.3)',
+                  color: '#60a5fa',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Edit2 size={16} />
+                Edit Data
+              </motion.button>
+
+              {/* Activate/Deactivate */}
+              {qris.is_active ? (
+                <motion.button
+                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(251,191,36,0.15)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onDeactivate()
+                    onMenuToggle()
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(251,191,36,0.08)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    color: '#fbbf24',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <X size={16} />
+                  Nonaktifkan
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(34,197,94,0.15)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onActivate()
+                    onMenuToggle()
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(34,197,94,0.08)',
+                    border: '1px solid rgba(34,197,94,0.3)',
+                    color: '#4ade80',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <RotateCcw size={16} />
+                  Aktifkan Kembali
+                </motion.button>
+              )}
+
+              {/* Delete */}
+              <motion.button
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(239,68,68,0.15)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  onDelete()
+                  onMenuToggle()
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.3)',
+                  color: '#f87171',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Trash2 size={16} />
+                Hapus Permanen
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

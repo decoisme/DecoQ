@@ -86,6 +86,7 @@ export default function Dashboard() {
   const [list, setList] = useState<QRISEntry[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Edit modal
   const [editingQRIS, setEditingQRIS] = useState<QRISEntry | null>(null);
@@ -815,6 +816,8 @@ export default function Dashboard() {
                     onActivate={() => handleActivate(q.id)}
                     onDeactivate={() => handleDeactivate(q.id)}
                     onDelete={() => handleDeletePermanent(q.id, q.merchant_name)}
+                    isMenuOpen={openMenuId === q.id}
+                    onMenuToggle={() => setOpenMenuId(openMenuId === q.id ? null : q.id)}
                   />
                 ))}
               </div>
