@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Settings, ArrowLeft, CheckCircle, AlertTriangle, Search, Camera, Upload, Inbox, Edit2, Trash2, RotateCcw, X } from 'lucide-react'
+import { Settings, ArrowLeft, CheckCircle, AlertTriangle, Search, Camera, Upload, Inbox, Edit2, Trash2, RotateCcw, X, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
@@ -141,7 +141,7 @@ export default function Admin() {
 
   const handleDeletePermanent = async (id: string, merchantName: string) => {
     const confirmation = prompt(
-      `⚠️ PERINGATAN: Hapus permanen tidak dapat dibatalkan!\n\nKetik "DELETE_PERMANENT" untuk menghapus QRIS "${merchantName}" secara permanen:`
+      `⚠ PERINGATAN: Hapus permanen tidak dapat dibatalkan!\n\nKetik "DELETE_PERMANENT" untuk menghapus QRIS "${merchantName}" secara permanen:`
     )
     
     if (confirmation !== 'DELETE_PERMANENT') {
@@ -657,8 +657,9 @@ export default function Admin() {
                           ID: {q.merchant_id} · {new Date(q.registered_at).toLocaleDateString('id-ID')}
                         </p>
                         {q.notes && (
-                          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem', fontStyle: 'italic', marginBottom: 4 }}>
-                            📝 {q.notes}
+                          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem', fontStyle: 'italic', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <FileText size={12} />
+                            {q.notes}
                           </p>
                         )}
                         <p style={{
