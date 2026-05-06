@@ -1,22 +1,13 @@
 -- ============================================================
--- QRIS Verifier - Supabase Schema
+-- QRIS Verifier - Supabase Schema UPDATE
 -- Jalankan script ini di Supabase SQL Editor
+-- Script ini aman untuk dijalankan berulang kali
 -- ============================================================
 
--- Tabel utama untuk menyimpan QRIS yang terdaftar
-CREATE TABLE IF NOT EXISTS qris_registry (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  hash TEXT NOT NULL UNIQUE,            -- SHA-256 hash dari raw QRIS string
-  merchant_name TEXT NOT NULL,           -- Nama merchant
-  merchant_id TEXT NOT NULL,             -- ID merchant
-  category TEXT DEFAULT 'Umum',          -- Kategori bisnis
-  registered_by TEXT NOT NULL,           -- Admin yang mendaftarkan
-  registered_at TIMESTAMPTZ DEFAULT NOW(),
-  is_active BOOLEAN DEFAULT TRUE,
-  notes TEXT
-);
+-- Tabel utama untuk menyimpan QRIS yang terdaftar (sudah ada, skip)
+-- CREATE TABLE IF NOT EXISTS qris_registry ...
 
--- Tabel log verifikasi (tracking setiap scan)
+-- Tabel log verifikasi (tracking setiap scan) - NEW TABLE
 CREATE TABLE IF NOT EXISTS verification_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   hash TEXT NOT NULL,
@@ -31,7 +22,7 @@ CREATE TABLE IF NOT EXISTS verification_logs (
   error_message TEXT                     -- Jika ada error
 );
 
--- Tabel audit log (tracking admin actions)
+-- Tabel audit log (tracking admin actions) - NEW TABLE
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   admin_role TEXT NOT NULL,              -- 'admin' atau 'superadmin'
@@ -45,45 +36,54 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index untuk performa
+-- Index untuk performa (existing indexes akan di-skip otomatis)
 CREATE INDEX IF NOT EXISTS idx_qris_hash ON qris_registry(hash);
 CREATE INDEX IF NOT EXISTS idx_qris_active ON qris_registry(is_active);
 CREATE INDEX IF NOT EXISTS idx_qris_registered_at ON qris_registry(registered_at DESC);
 
+-- New indexes untuk verification_logs
 CREATE INDEX IF NOT EXISTS idx_verification_logs_hash ON verification_logs(hash);
 CREATE INDEX IF NOT EXISTS idx_verification_logs_validated_at ON verification_logs(validated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_verification_logs_verified ON verification_logs(is_verified);
+CREATE INDEX IF NOT EXISTS idx_verification_logs_qris_id ON verification_logs(qris_id);
 
+-- New indexes untuk audit_logs
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_role ON audit_logs(admin_role);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_type ON audit_logs(resource_type);
 
--- Row Level Security
+-- Row Level Security (enable jika belum)
 ALTER TABLE qris_registry ENABLE ROW LEVEL SECURITY;
 ALTER TABLE verification_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Policy: semua bisa SELECT active QRIS (untuk validasi user)
+-- Drop existing policies jika ada (untuk update)
+DROP POLICY IF EXISTS "Public can read active QRIS" ON qris_registry;
+DROP POLICY IF EXISTS "Anyone can insert verification logs" ON verification_logs;
+DROP POLICY IF EXISTS "Public can read verification logs" ON verification_logs;
+DROP POLICY IF EXISTS "Public can read audit logs" ON audit_logs;
+DROP POLICY IF EXISTS "Anyone can insert audit logs" ON audit_logs;
+DROP POLICY IF EXISTS "Admin can insert QRIS" ON qris_registry;
+DROP POLICY IF EXISTS "Admin can update QRIS" ON qris_registry;
+DROP POLICY IF EXISTS "Admin can delete QRIS" ON qris_registry;
+
+-- Recreate policies dengan definisi terbaru
 CREATE POLICY "Public can read active QRIS" ON qris_registry
   FOR SELECT USING (is_active = TRUE);
 
--- Policy: semua bisa INSERT ke verification logs
 CREATE POLICY "Anyone can insert verification logs" ON verification_logs
   FOR INSERT WITH CHECK (TRUE);
 
--- Policy: SELECT verification logs (untuk dashboard admin)
 CREATE POLICY "Public can read verification logs" ON verification_logs
   FOR SELECT USING (TRUE);
 
--- Policy: SELECT audit logs (untuk dashboard admin)
 CREATE POLICY "Public can read audit logs" ON audit_logs
   FOR SELECT USING (TRUE);
 
--- Policy: INSERT audit logs
 CREATE POLICY "Anyone can insert audit logs" ON audit_logs
   FOR INSERT WITH CHECK (TRUE);
 
--- Policy: INSERT qris_registry (pakai service_role dari admin panel)
 CREATE POLICY "Admin can insert QRIS" ON qris_registry
   FOR INSERT WITH CHECK (TRUE);
 
@@ -111,3 +111,38 @@ SELECT
 -- Data contoh (opsional)
 -- INSERT INTO qris_registry (hash, merchant_name, merchant_id, category, registered_by, notes)
 -- VALUES ('SAMPLE_HASH_HERE', 'Warung Pak Budi', 'MERCH001', 'F&B', 'admin@qris.id', 'Test merchant');
+
+
+-- View untuk statistik dashboard (drop & recreate untuk update)
+DROP VIEW IF EXISTS dashboard_stats;
+
+CREATE VIEW dashboard_stats AS
+SELECT
+  (SELECT COUNT(*) FROM qris_registry WHERE is_active = TRUE) as total_active_qris,
+  (SELECT COUNT(*) FROM qris_registry) as total_qris,
+  (SELECT COUNT(*) FROM verification_logs) as total_verifications,
+  (SELECT COUNT(*) FROM verification_logs WHERE is_verified = TRUE) as successful_verifications,
+  (SELECT COUNT(*) FROM verification_logs WHERE validated_at >= NOW() - INTERVAL '24 hours') as verifications_today,
+  (SELECT COUNT(*) FROM verification_logs WHERE validated_at >= NOW() - INTERVAL '7 days') as verifications_week,
+  CASE 
+    WHEN (SELECT COUNT(*) FROM verification_logs) > 0 
+    THEN ROUND((SELECT COUNT(*) FROM verification_logs WHERE is_verified = TRUE)::NUMERIC / (SELECT COUNT(*) FROM verification_logs)::NUMERIC * 100, 2)
+    ELSE 0
+  END as success_rate;
+
+-- Grant access to view
+GRANT SELECT ON dashboard_stats TO anon, authenticated;
+
+-- ============================================================
+-- SELESAI! 
+-- Tables: qris_registry, verification_logs, audit_logs
+-- View: dashboard_stats
+-- Indexes: Optimized untuk performa
+-- Policies: RLS enabled dengan access control
+-- ============================================================
+
+-- CATATAN:
+-- 1. Script ini aman dijalankan berulang kali
+-- 2. Existing data tidak akan hilang
+-- 3. Policies akan di-recreate dengan definisi terbaru
+-- 4. View akan di-recreate untuk update

@@ -1,28 +1,20 @@
 import Head from "next/head";
-import Link from "next/link";
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Settings,
-  ArrowLeft,
-  CheckCircle,
   AlertTriangle,
-  Search,
-  Camera,
-  Upload,
-  Inbox,
-  Shield,
-  Crown,
-  Eye,
-  Lock,
+  Database,
+  Activity,
+  TrendingUp,
+  Users,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import Sidebar from "../components/Sidebar";
+import StatCard from "../components/StatCard";
+import VerificationLogsTable from "../components/VerificationLogsTable";
+import AuditLogsTable from "../components/AuditLogsTable";
 import QRISListItem from "../components/QRISListItem";
 import RestrictionModal from "../components/RestrictionModal";
-
-const QRScanner = dynamic(() => import("../components/QRScanner"), {
-  ssr: false,
-});
 
 type AdminRole = 'admin' | 'superadmin'
 
@@ -38,19 +30,18 @@ type QRISEntry = {
   notes?: string;
 };
 
-const CATEGORIES = [
-  "F&B",
-  "Retail",
-  "Jasa",
-  "Transportasi",
-  "Kesehatan",
-  "Pendidikan",
-  "E-commerce",
-  "Umum",
-];
+type DashboardStats = {
+  total_qris: number;
+  total_active_qris: number;
+  total_verifications: number;
+  successful_verifications: number;
+  verifications_today: number;
+  verifications_week: number;
+  success_rate: number;
+}
 
-export default function Dashboard() {
-  const [tab, setTab] = useState<"register" | "list">("list");
+export default function DashboardNew() {
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [adminKey, setAdminKey] = useState("");
   const [authed, setAuthed] = useState(false);
   const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
@@ -58,56 +49,26 @@ export default function Dashboard() {
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Stats
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // QRIS List
+  const [list, setList] = useState<QRISEntry[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Restriction modal
   const [restrictionModal, setRestrictionModal] = useState<{
     isOpen: boolean;
     action: string;
   }>({ isOpen: false, action: "" });
 
-  // Register form
-  const [form, setForm] = useState({
-    merchantName: "",
-    merchantId: "",
-    category: "Umum",
-    registeredBy: "",
-    notes: "",
-    rawQRIS: "",
-  });
-  const [scanning, setScanning] = useState(false);
-  const [regLoading, setRegLoading] = useState(false);
-  const [regResult, setRegResult] = useState<{
-    success?: boolean;
-    message?: string;
-    hash?: string;
-    error?: string;
-  } | null>(null);
-
-  // List
-  const [list, setList] = useState<QRISEntry[]>([]);
-  const [listLoading, setListLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Edit modal
-  const [editingQRIS, setEditingQRIS] = useState<QRISEntry | null>(null);
-  const [editForm, setEditForm] = useState({
-    merchantName: "",
-    merchantId: "",
-    category: "Umum",
-    notes: "",
-  });
-  const [editLoading, setEditLoading] = useState(false);
-  const [editResult, setEditResult] = useState<{
-    success?: boolean;
-    message?: string;
-    error?: string;
-  } | null>(null);
-
   const tryAuth = async () => {
     setAuthLoading(true);
     setAuthError("");
     
     try {
-      // Authenticate with new auth API
       const authRes = await fetch("/api/auth-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -122,21 +83,35 @@ export default function Dashboard() {
         return;
       }
 
-      // Set role and name
       setAdminRole(authData.role);
       setAdminName(authData.name);
       setAuthed(true);
 
-      // Fetch list
-      const res = await fetch("/api/list", {
-        headers: { "x-admin-key": adminKey },
-      });
-      const json = await res.json();
-      setList(json.data || []);
+      // Fetch initial data
+      await Promise.all([
+        fetchStats(),
+        fetchList()
+      ]);
     } catch {
       setAuthError("Gagal terhubung ke server.");
     }
     setAuthLoading(false);
+  };
+
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    try {
+      const res = await fetch("/api/dashboard-stats", {
+        headers: { "x-admin-key": adminKey },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setStats(json.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+    setStatsLoading(false);
   };
 
   const fetchList = async () => {
@@ -151,59 +126,18 @@ export default function Dashboard() {
     setListLoading(false);
   };
 
-  useEffect(() => {
-    if (authed && tab === "list") fetchList();
-  }, [tab, authed]);
-
   const showRestriction = (action: string) => {
     setRestrictionModal({ isOpen: true, action });
   };
 
-  const handleRegister = async () => {
-    if (adminRole !== 'superadmin') {
-      showRestriction('mendaftarkan QRIS baru');
-      return;
-    }
-
-    if (!form.merchantName || !form.merchantId || !form.rawQRIS) {
-      setRegResult({
-        error: "Nama merchant, ID merchant, dan data QRIS wajib diisi.",
-      });
-      return;
-    }
-    setRegLoading(true);
-    setRegResult(null);
-    try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminKey, ...form }),
-      });
-      const json = await res.json();
-      
-      if (res.status === 403) {
-        showRestriction('mendaftarkan QRIS baru');
-        setRegLoading(false);
-        return;
-      }
-
-      if (json.success) {
-        setRegResult({ success: true, message: json.message, hash: json.hash });
-        setForm({
-          merchantName: "",
-          merchantId: "",
-          category: "Umum",
-          registeredBy: "",
-          notes: "",
-          rawQRIS: "",
-        });
-      } else {
-        setRegResult({ error: json.error });
-      }
-    } catch {
-      setRegResult({ error: "Gagal menghubungi server." });
-    }
-    setRegLoading(false);
+  const handleLogout = () => {
+    setAuthed(false);
+    setAdminKey("");
+    setAdminRole(null);
+    setAdminName("");
+    setStats(null);
+    setList([]);
+    setActiveTab("overview");
   };
 
   const handleDeactivate = async (id: string) => {
@@ -220,14 +154,13 @@ export default function Dashboard() {
       body: JSON.stringify({ id }),
     });
 
-    const json = await res.json();
-    
     if (res.status === 403) {
       showRestriction('menonaktifkan QRIS');
       return;
     }
 
     fetchList();
+    fetchStats();
   };
 
   const handleActivate = async (id: string) => {
@@ -244,16 +177,16 @@ export default function Dashboard() {
       body: JSON.stringify({ id, action: "activate" }),
     });
     
-    const json = await res.json();
-    
     if (res.status === 403) {
       showRestriction('mengaktifkan QRIS');
       return;
     }
 
+    const json = await res.json();
     if (json.success) {
       alert(json.message);
       fetchList();
+      fetchStats();
     }
   };
 
@@ -278,16 +211,16 @@ export default function Dashboard() {
       body: JSON.stringify({ id, confirm: "DELETE_PERMANENT" }),
     });
 
-    const json = await res.json();
-    
     if (res.status === 403) {
       showRestriction('menghapus QRIS secara permanen');
       return;
     }
 
+    const json = await res.json();
     if (json.success) {
       alert(json.message);
       fetchList();
+      fetchStats();
     } else {
       alert("Gagal menghapus: " + json.error);
     }
@@ -298,74 +231,8 @@ export default function Dashboard() {
       showRestriction('mengedit data QRIS');
       return;
     }
-
-    setEditingQRIS(qris);
-    setEditForm({
-      merchantName: qris.merchant_name,
-      merchantId: qris.merchant_id,
-      category: qris.category,
-      notes: qris.notes || "",
-    });
-    setEditResult(null);
-  };
-
-  const closeEditModal = () => {
-    setEditingQRIS(null);
-    setEditForm({
-      merchantName: "",
-      merchantId: "",
-      category: "Umum",
-      notes: "",
-    });
-    setEditResult(null);
-  };
-
-  const handleEditSubmit = async () => {
-    if (!editingQRIS) return;
-
-    setEditLoading(true);
-    setEditResult(null);
-
-    try {
-      const res = await fetch("/api/list", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-key": adminKey,
-        },
-        body: JSON.stringify({
-          id: editingQRIS.id,
-          action: "update",
-          merchantName: editForm.merchantName,
-          merchantId: editForm.merchantId,
-          category: editForm.category,
-          notes: editForm.notes,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (res.status === 403) {
-        closeEditModal();
-        showRestriction('mengedit data QRIS');
-        setEditLoading(false);
-        return;
-      }
-
-      if (json.success) {
-        setEditResult({ success: true, message: json.message });
-        setTimeout(() => {
-          closeEditModal();
-          fetchList();
-        }, 1500);
-      } else {
-        setEditResult({ error: json.error });
-      }
-    } catch (error) {
-      setEditResult({ error: "Gagal menghubungi server" });
-    } finally {
-      setEditLoading(false);
-    }
+    // TODO: Implement edit modal
+    alert('Edit modal coming soon!');
   };
 
   const filtered = list.filter(
@@ -392,7 +259,6 @@ export default function Dashboard() {
             overflow: "hidden",
           }}
         >
-          {/* Background animation */}
           <motion.div
             animate={{ rotate: 360, scale: [1, 1.2, 1] }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -529,20 +395,6 @@ export default function Dashboard() {
                 "Masuk Dashboard"
               )}
             </motion.button>
-
-            <Link
-              href="/"
-              style={{
-                display: "block",
-                textAlign: "center",
-                marginTop: "1.25rem",
-                color: "rgba(255,255,255,0.35)",
-                fontSize: "0.82rem",
-                textDecoration: "none",
-              }}
-            >
-              ← Kembali ke beranda
-            </Link>
           </motion.div>
         </div>
       </>
@@ -554,324 +406,251 @@ export default function Dashboard() {
       <Head>
         <title>Dashboard Admin — DecoQ</title>
       </Head>
-      <div
-        style={{
-          minHeight: "100vh",
-          maxWidth: 560,
-          margin: "0 auto",
-          padding: "1.5rem 1rem",
+
+      <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+        {/* Sidebar */}
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          adminRole={adminRole!}
+          adminName={adminName}
+          onLogout={handleLogout}
+        />
+
+        {/* Main Content */}
+        <main style={{
+          flex: 1,
+          marginLeft: 280,
+          padding: '2rem',
+          minHeight: '100vh'
         }}
-      >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "2rem",
-          }}
+        className="dashboard-main"
         >
-          <div
-            style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
-          >
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <motion.button
-                whileHover={{ scale: 1.05, x: -3 }}
-                whileTap={{ scale: 0.95 }}
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,249,133,0.2)",
-                  color: "#fff",
-                  borderRadius: "10px",
-                  padding: "8px 14px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <ArrowLeft size={14} strokeWidth={2.5} />
-              </motion.button>
-            </Link>
-            <div>
-              <h1
-                style={{ color: "#fff", fontWeight: 800, fontSize: "1.3rem" }}
-              >
-                Dashboard
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <span
-                  className={`tag ${adminRole === 'superadmin' ? 'tag-success' : 'tag-neutral'}`}
-                  style={{
-                    fontSize: "0.7rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  {adminRole === 'superadmin' ? (
-                    <>
-                      <Crown size={12} />
-                      Superadmin
-                    </>
-                  ) : (
-                    <>
-                      <Eye size={12} />
-                      Admin (View Only)
-                    </>
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.3 }}
-            style={{
-              textAlign: "right",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: 4,
-            }}
-          >
-            <span
-              style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem" }}
-            >
-              Total QRIS
-            </span>
-            <motion.span
-              key={list.filter((q) => q.is_active).length}
-              initial={{ scale: 1.5, color: "#fff985" }}
-              animate={{ scale: 1, color: "#fff985" }}
-              style={{ fontWeight: 700, fontSize: "1.5rem" }}
-            >
-              {list.filter((q) => q.is_active).length}
-            </motion.span>
-          </motion.div>
-        </motion.div>
-
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-          <button
-            onClick={() => setTab("list")}
-            style={{
-              padding: "0.6rem 1.25rem",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontFamily: "Plus Jakarta Sans, sans-serif",
-              fontWeight: 600,
-              fontSize: "0.88rem",
-              transition: "all 0.2s",
-              background:
-                tab === "list"
-                  ? "linear-gradient(135deg, #fff985, #ffe940)"
-                  : "rgba(255,255,255,0.06)",
-              color: tab === "list" ? "#1a1a2e" : "rgba(255,255,255,0.6)",
-              border: tab === "list" ? "none" : "1px solid rgba(255,249,133,0.2)",
-            }}
-          >
-            Daftar QRIS ({list.filter((q) => q.is_active).length})
-          </button>
-          
-          <button
-            onClick={() => {
-              if (adminRole !== 'superadmin') {
-                showRestriction('mengakses halaman registrasi QRIS');
-                return;
-              }
-              setTab("register");
-            }}
-            style={{
-              padding: "0.6rem 1.25rem",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontFamily: "Plus Jakarta Sans, sans-serif",
-              fontWeight: 600,
-              fontSize: "0.88rem",
-              transition: "all 0.2s",
-              background:
-                tab === "register"
-                  ? "linear-gradient(135deg, #fff985, #ffe940)"
-                  : "rgba(255,255,255,0.06)",
-              color: tab === "register" ? "#1a1a2e" : "rgba(255,255,255,0.6)",
-              border: tab === "register" ? "none" : "1px solid rgba(255,249,133,0.2)",
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              opacity: adminRole !== 'superadmin' ? 0.5 : 1
-            }}
-          >
-            {adminRole !== 'superadmin' && <Lock size={14} />}
-            + Daftarkan QRIS
-          </button>
-        </div>
-
-        {/* Register Tab - SUPERADMIN ONLY */}
-        {tab === "register" && adminRole === 'superadmin' && (
-          <div className="glass" style={{ padding: "1.75rem" }}>
-            {/* ... Register form content sama seperti admin.tsx ... */}
-            <h2
-              style={{
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: "1.1rem",
-                marginBottom: "1.5rem",
-              }}
-            >
-              Daftarkan QRIS Baru
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              Fitur ini akan ditambahkan di update berikutnya. Gunakan halaman admin lama untuk registrasi.
-            </p>
-            <Link href="/admin">
-              <button className="btn-secondary" style={{ width: '100%' }}>
-                Buka Panel Admin Lama
-              </button>
-            </Link>
-          </div>
-        )}
-
-        {/* List Tab */}
-        {tab === "list" && (
-          <div>
-            <div style={{ marginBottom: "1rem", position: "relative" }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: "1rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  pointerEvents: "none",
-                }}
-              >
-                <Search size={16} color="rgba(255,255,255,0.3)" />
-              </div>
-              <input
-                className="input-glass"
-                placeholder="Cari merchant atau ID..."
-                style={{ paddingLeft: "2.5rem" }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {listLoading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "3rem",
-                  color: "rgba(255,255,255,0.4)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    marginBottom: 12,
-                  }}
-                >
-                  <div className="spinner" />
-                </div>
-                Memuat data...
-              </div>
-            ) : filtered.length === 0 ? (
-              <div
-                className="glass"
-                style={{ padding: "3rem", textAlign: "center" }}
-              >
-                <Inbox
-                  size={48}
-                  color="rgba(255,255,255,0.2)"
-                  style={{ margin: "0 auto 12px" }}
-                />
-                <p
-                  style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem" }}
-                >
-                  {searchTerm
-                    ? "Tidak ada hasil pencarian"
-                    : "Belum ada QRIS terdaftar"}
-                </p>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.75rem",
-                  overflow: "visible", // Penting: biarkan dropdown menu keluar
-                  position: "relative"
-                }}
-              >
-                {filtered.map((q) => (
-                  <QRISListItem
-                    key={q.id}
-                    qris={q}
-                    onEdit={() => openEditModal(q)}
-                    onActivate={() => handleActivate(q.id)}
-                    onDeactivate={() => handleDeactivate(q.id)}
-                    onDelete={() => handleDeletePermanent(q.id, q.merchant_name)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Edit Modal - same as admin.tsx but with role check */}
-        <AnimatePresence>
-          {editingQRIS && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.7)",
-                backdropFilter: "blur(4px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "1rem",
-                zIndex: 1000,
-              }}
-              onClick={closeEditModal}
-            >
+          <AnimatePresence mode="wait">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
               <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="glass"
-                style={{
-                  width: "100%",
-                  maxWidth: 500,
-                  padding: "2rem",
-                  maxHeight: "90vh",
-                  overflowY: "auto",
-                }}
+                key="overview"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
               >
-                {/* Edit modal content - copy from admin.tsx */}
-                <p style={{ color: '#fff', textAlign: 'center' }}>Edit modal content here</p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <h1 style={{ 
+                  color: '#fff', 
+                  fontWeight: 800, 
+                  fontSize: '2rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  Dashboard Overview
+                </h1>
+                <p style={{ 
+                  color: 'rgba(255,255,255,0.5)', 
+                  fontSize: '0.95rem',
+                  marginBottom: '2rem'
+                }}>
+                  Selamat datang kembali, {adminName}! 👋
+                </p>
 
-        {/* Restriction Modal */}
-        <AnimatePresence>
-          <RestrictionModal
-            isOpen={restrictionModal.isOpen}
-            onClose={() => setRestrictionModal({ isOpen: false, action: "" })}
-            action={restrictionModal.action}
-          />
-        </AnimatePresence>
+                {/* Stats Cards */}
+                {statsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div className="spinner" style={{ margin: '0 auto' }} />
+                  </div>
+                ) : stats && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                    gap: '1.5rem',
+                    marginBottom: '2rem'
+                  }}>
+                    <StatCard
+                      title="Total QRIS"
+                      value={stats.total_active_qris}
+                      subtitle={`${stats.total_qris} total (termasuk nonaktif)`}
+                      icon={Database}
+                      color="blue"
+                    />
+                    <StatCard
+                      title="Total Verifikasi"
+                      value={stats.total_verifications}
+                      subtitle={`${stats.verifications_today} hari ini`}
+                      icon={Activity}
+                      color="purple"
+                    />
+                    <StatCard
+                      title="Success Rate"
+                      value={`${stats.success_rate}%`}
+                      subtitle={`${stats.successful_verifications} berhasil`}
+                      icon={TrendingUp}
+                      color="green"
+                    />
+                    <StatCard
+                      title="Minggu Ini"
+                      value={stats.verifications_week}
+                      subtitle="Verifikasi 7 hari terakhir"
+                      icon={Users}
+                      color="yellow"
+                    />
+                  </div>
+                )}
+
+                {/* Quick Info */}
+                <div className="glass" style={{ 
+                  padding: '1.5rem',
+                  borderRadius: '16px',
+                  marginTop: '2rem'
+                }}>
+                  <h3 style={{ 
+                    color: '#fff', 
+                    fontWeight: 700, 
+                    fontSize: '1.1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    Quick Actions
+                  </h3>
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '1rem'
+                  }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('qris')}
+                      style={{ width: '100%' }}
+                    >
+                      View QRIS Database
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('verification')}
+                      style={{ width: '100%' }}
+                    >
+                      View Verification Logs
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setActiveTab('audit')}
+                      style={{ width: '100%' }}
+                    >
+                      View Audit Logs
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* QRIS Database Tab */}
+            {activeTab === 'qris' && (
+              <motion.div
+                key="qris"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <h1 style={{ 
+                  color: '#fff', 
+                  fontWeight: 800, 
+                  fontSize: '2rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  QRIS Database
+                </h1>
+                <p style={{ 
+                  color: 'rgba(255,255,255,0.5)', 
+                  fontSize: '0.95rem',
+                  marginBottom: '2rem'
+                }}>
+                  Kelola semua QRIS yang terdaftar
+                </p>
+
+                {/* Search */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <input
+                    className="input-glass"
+                    placeholder="Cari merchant atau ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                {/* List */}
+                {listLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div className="spinner" style={{ margin: '0 auto' }} />
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="glass" style={{ padding: '3rem', textAlign: 'center' }}>
+                    <p style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {searchTerm ? 'Tidak ada hasil' : 'Belum ada QRIS'}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    overflow: 'visible',
+                    position: 'relative'
+                  }}>
+                    {filtered.map((q) => (
+                      <QRISListItem
+                        key={q.id}
+                        qris={q}
+                        onEdit={() => openEditModal(q)}
+                        onActivate={() => handleActivate(q.id)}
+                        onDeactivate={() => handleDeactivate(q.id)}
+                        onDelete={() => handleDeletePermanent(q.id, q.merchant_name)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Verification Logs Tab */}
+            {activeTab === 'verification' && (
+              <motion.div
+                key="verification"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <VerificationLogsTable adminKey={adminKey} />
+              </motion.div>
+            )}
+
+            {/* Audit Logs Tab */}
+            {activeTab === 'audit' && (
+              <motion.div
+                key="audit"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <AuditLogsTable adminKey={adminKey} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
       </div>
+
+      {/* Restriction Modal */}
+      <AnimatePresence>
+        <RestrictionModal
+          isOpen={restrictionModal.isOpen}
+          onClose={() => setRestrictionModal({ isOpen: false, action: "" })}
+          action={restrictionModal.action}
+        />
+      </AnimatePresence>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .dashboard-main {
+            margin-left: 0 !important;
+            padding: 5rem 1rem 1rem 1rem !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

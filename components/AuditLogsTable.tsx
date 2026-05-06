@@ -169,7 +169,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
       </div>
 
       {/* Table */}
-      <div className="glass" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+      <div className="glass" style={{ borderRadius: '16px', overflow: 'hidden', padding: 0 }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto 1rem' }} />
@@ -184,7 +184,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(255,249,133,0.2)' }}>
                     <th style={thStyle}>Admin</th>
                     <th style={thStyle}>Action</th>
                     <th style={thStyle}>Resource</th>
@@ -201,7 +201,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       style={{ 
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        borderBottom: '1px solid rgba(255,249,133,0.1)',
                         transition: 'background 0.2s'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
@@ -313,7 +313,7 @@ export default function AuditLogsTable({ adminKey }: Props) {
             {/* Pagination */}
             <div style={{
               padding: '1rem',
-              borderTop: '1px solid rgba(255,255,255,0.1)',
+              borderTop: '1px solid rgba(255,249,133,0.2)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'

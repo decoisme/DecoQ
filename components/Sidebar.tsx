@@ -34,7 +34,7 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
   const SidebarContent = () => (
     <>
       {/* Logo & Brand */}
-      <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,249,133,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
           <Image src="/logo.svg" alt="DecoQ" width={32} height={32} />
           <div>
@@ -118,7 +118,7 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
       </nav>
 
       {/* Logout Button */}
-      <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ padding: '1rem', borderTop: '1px solid rgba(255,249,133,0.2)' }}>
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -180,9 +180,10 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
           position: 'fixed',
           left: 0,
           top: 0,
-          background: 'rgba(26, 26, 46, 0.95)',
-          backdropFilter: 'blur(10px)',
-          borderRight: '1px solid rgba(255,249,133,0.1)',
+          background: 'rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(255,249,133,0.25)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 50
@@ -220,9 +221,10 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
               position: 'fixed',
               left: 0,
               top: 0,
-              background: 'rgba(26, 26, 46, 0.98)',
-              backdropFilter: 'blur(10px)',
-              borderRight: '1px solid rgba(255,249,133,0.2)',
+              background: 'rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRight: '1px solid rgba(255,249,133,0.3)',
               display: 'flex',
               flexDirection: 'column',
               zIndex: 95,
