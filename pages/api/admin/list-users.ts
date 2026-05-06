@@ -89,15 +89,33 @@ export default async function handler(
     }
 
     // Get stats
-    const { data: stats } = await supabaseAdmin
+    const { data: stats, error: statsError } = await supabaseAdmin
       .from('users_stats')
       .select('*')
       .single()
 
+    // If stats view doesn't exist, calculate manually
+    let statsData = stats
+    if (statsError || !stats) {
+      const { data: allUsers } = await supabaseAdmin
+        .from('users')
+        .select('role, is_active')
+
+      if (allUsers) {
+        statsData = {
+          total_superadmins: allUsers.filter(u => u.role === 'superadmin' && u.is_active).length,
+          total_admins: allUsers.filter(u => u.role === 'admin' && u.is_active).length,
+          total_active_users: allUsers.filter(u => u.is_active).length,
+          total_inactive_users: allUsers.filter(u => !u.is_active).length,
+          total_users: allUsers.length
+        }
+      }
+    }
+
     return res.status(200).json({
       success: true,
       data: users,
-      stats: stats || {
+      stats: statsData || {
         total_superadmins: 0,
         total_admins: 0,
         total_active_users: 0,

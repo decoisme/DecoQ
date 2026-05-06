@@ -17,6 +17,7 @@ import VerificationLogsTable from "../components/VerificationLogsTable";
 import AuditLogsTable from "../components/AuditLogsTable";
 import QRISListItem from "../components/QRISListItem";
 import RestrictionModal from "../components/RestrictionModal";
+import ManageAdminTab from "../components/ManageAdminTab";
 
 type AdminRole = 'admin' | 'superadmin'
 
@@ -148,14 +149,25 @@ export default function DashboardNew() {
   const fetchList = async (token?: string) => {
     setListLoading(true);
     try {
+      console.log('🔍 Fetching QRIS list...')
       const res = await fetch("/api/list", {
         headers: { 
           "Authorization": `Bearer ${token || sessionToken}`
         },
       });
+      console.log('📡 Response status:', res.status)
       const json = await res.json();
+      console.log('📦 Response data:', json)
+      
+      if (!res.ok) {
+        console.error('❌ API error:', json.error)
+      }
+      
       setList(json.data || []);
-    } catch {}
+      console.log('✅ QRIS list loaded:', json.data?.length || 0, 'items')
+    } catch (error) {
+      console.error('❌ Fetch list error:', error)
+    }
     setListLoading(false);
   };
 
@@ -531,6 +543,18 @@ export default function DashboardNew() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 <AuditLogsTable sessionToken={sessionToken} />
+              </motion.div>
+            )}
+
+            {/* Manage Admin Tab (Superadmin Only) */}
+            {activeTab === 'manage-admin' && adminRole === 'superadmin' && (
+              <motion.div
+                key="manage-admin"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <ManageAdminTab sessionToken={sessionToken} />
               </motion.div>
             )}
           </AnimatePresence>
