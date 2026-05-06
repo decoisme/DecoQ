@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Settings, ArrowLeft, CheckCircle, AlertTriangle, Search, Camera, Upload, Inbox } from 'lucide-react'
+import { Settings, ArrowLeft, CheckCircle, AlertTriangle, Search, Camera, Upload, Inbox, Edit2, Trash2, RotateCcw, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
@@ -42,6 +42,17 @@ export default function Admin() {
   const [list, setList] = useState<QRISEntry[]>([])
   const [listLoading, setListLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  
+  // Edit modal
+  const [editingQRIS, setEditingQRIS] = useState<QRISEntry | null>(null)
+  const [editForm, setEditForm] = useState({
+    merchantName: '',
+    merchantId: '',
+    category: 'Umum',
+    notes: ''
+  })
+  const [editLoading, setEditLoading] = useState(false)
+  const [editResult, setEditResult] = useState<{ success?: boolean; message?: string; error?: string } | null>(null)
 
   const tryAuth = async () => {
     setAuthLoading(true)
@@ -112,6 +123,100 @@ export default function Admin() {
       body: JSON.stringify({ id })
     })
     fetchList()
+  }
+
+  const handleActivate = async (id: string) => {
+    if (!confirm('Aktifkan kembali QRIS ini?')) return
+    const res = await fetch('/api/list', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify({ id, action: 'activate' })
+    })
+    const json = await res.json()
+    if (json.success) {
+      alert(json.message)
+      fetchList()
+    }
+  }
+
+  const handleDeletePermanent = async (id: string, merchantName: string) => {
+    const confirmation = prompt(
+      `⚠️ PERINGATAN: Hapus permanen tidak dapat dibatalkan!\n\nKetik "DELETE_PERMANENT" untuk menghapus QRIS "${merchantName}" secara permanen:`
+    )
+    
+    if (confirmation !== 'DELETE_PERMANENT') {
+      alert('Penghapusan dibatalkan')
+      return
+    }
+
+    const res = await fetch('/api/list', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify({ id, confirm: 'DELETE_PERMANENT' })
+    })
+    
+    const json = await res.json()
+    if (json.success) {
+      alert(json.message)
+      fetchList()
+    } else {
+      alert('Gagal menghapus: ' + json.error)
+    }
+  }
+
+  const openEditModal = (qris: QRISEntry) => {
+    setEditingQRIS(qris)
+    setEditForm({
+      merchantName: qris.merchant_name,
+      merchantId: qris.merchant_id,
+      category: qris.category,
+      notes: qris.notes || ''
+    })
+    setEditResult(null)
+  }
+
+  const closeEditModal = () => {
+    setEditingQRIS(null)
+    setEditForm({ merchantName: '', merchantId: '', category: 'Umum', notes: '' })
+    setEditResult(null)
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editingQRIS) return
+    
+    setEditLoading(true)
+    setEditResult(null)
+    
+    try {
+      const res = await fetch('/api/list', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({
+          id: editingQRIS.id,
+          action: 'update',
+          merchantName: editForm.merchantName,
+          merchantId: editForm.merchantId,
+          category: editForm.category,
+          notes: editForm.notes
+        })
+      })
+      
+      const json = await res.json()
+      
+      if (json.success) {
+        setEditResult({ success: true, message: json.message })
+        setTimeout(() => {
+          closeEditModal()
+          fetchList()
+        }, 1500)
+      } else {
+        setEditResult({ error: json.error })
+      }
+    } catch (error) {
+      setEditResult({ error: 'Gagal menghubungi server' })
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   const filtered = list.filter(q =>
@@ -532,9 +637,15 @@ export default function Admin() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {filtered.map(q => (
-                  <div key={q.id} className="glass-dark" style={{ padding: '1.25rem', borderRadius: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
-                      <div>
+                  <motion.div
+                    key={q.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-dark"
+                    style={{ padding: '1.25rem', borderRadius: '16px' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>{q.merchant_name}</span>
                           <span className={`tag ${q.is_active ? 'tag-success' : 'tag-danger'}`} style={{ fontSize: '0.68rem' }}>
@@ -542,33 +653,340 @@ export default function Admin() {
                           </span>
                           <span className="tag tag-neutral" style={{ fontSize: '0.68rem' }}>{q.category}</span>
                         </div>
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }}>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', marginBottom: 4 }}>
                           ID: {q.merchant_id} · {new Date(q.registered_at).toLocaleDateString('id-ID')}
                         </p>
+                        {q.notes && (
+                          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem', fontStyle: 'italic', marginBottom: 4 }}>
+                            📝 {q.notes}
+                          </p>
+                        )}
                         <p style={{
                           fontFamily: 'Space Mono, monospace', fontSize: '0.62rem',
                           color: 'rgba(255,249,133,0.4)', marginTop: 4, overflow: 'hidden',
-                          whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: 260
+                          whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '100%'
                         }}>
                           {q.hash}
                         </p>
                       </div>
-                      {q.is_active && (
-                        <button onClick={() => handleDeactivate(q.id)} style={{
-                          background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
-                          color: '#f87171', borderRadius: '8px', padding: '6px 12px',
-                          cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap'
-                        }}>
-                          Nonaktifkan
-                        </button>
-                      )}
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {/* Edit button */}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => openEditModal(q)}
+                          style={{
+                            background: 'rgba(59,130,246,0.15)',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                            color: '#60a5fa',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="Edit data QRIS"
+                        >
+                          <Edit2 size={14} />
+                          Edit
+                        </motion.button>
+
+                        {q.is_active ? (
+                          /* Deactivate button */
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleDeactivate(q.id)}
+                            style={{
+                              background: 'rgba(251,191,36,0.15)',
+                              border: '1px solid rgba(251,191,36,0.3)',
+                              color: '#fbbf24',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                            title="Nonaktifkan QRIS"
+                          >
+                            <X size={14} />
+                            Nonaktif
+                          </motion.button>
+                        ) : (
+                          /* Activate button */
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleActivate(q.id)}
+                            style={{
+                              background: 'rgba(34,197,94,0.15)',
+                              border: '1px solid rgba(34,197,94,0.3)',
+                              color: '#4ade80',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                            title="Aktifkan kembali QRIS"
+                          >
+                            <RotateCcw size={14} />
+                            Aktifkan
+                          </motion.button>
+                        )}
+
+                        {/* Delete permanent button */}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleDeletePermanent(q.id, q.merchant_name)}
+                          style={{
+                            background: 'rgba(239,68,68,0.15)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            color: '#f87171',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="Hapus permanen (tidak dapat dibatalkan)"
+                        >
+                          <Trash2 size={14} />
+                          Hapus
+                        </motion.button>
+                      </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </div>
         )}
+
+        {/* Edit Modal */}
+        <AnimatePresence>
+          {editingQRIS && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.7)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+                zIndex: 1000
+              }}
+              onClick={closeEditModal}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="glass"
+                style={{
+                  width: '100%',
+                  maxWidth: 500,
+                  padding: '2rem',
+                  maxHeight: '90vh',
+                  overflowY: 'auto'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h2 style={{ color: '#fff', fontWeight: 700, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Edit2 size={20} color="#60a5fa" />
+                    Edit Data QRIS
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={closeEditModal}
+                    style={{
+                      background: 'rgba(255,255,255,0.1)',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={18} />
+                  </motion.button>
+                </div>
+
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', display: 'block', marginBottom: 6 }}>
+                      Nama Merchant *
+                    </label>
+                    <input
+                      className="input-glass"
+                      placeholder="Nama merchant"
+                      value={editForm.merchantName}
+                      onChange={e => setEditForm({ ...editForm, merchantName: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', display: 'block', marginBottom: 6 }}>
+                      ID Merchant *
+                    </label>
+                    <input
+                      className="input-glass"
+                      placeholder="ID merchant"
+                      value={editForm.merchantId}
+                      onChange={e => setEditForm({ ...editForm, merchantId: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', display: 'block', marginBottom: 6 }}>
+                      Kategori
+                    </label>
+                    <select
+                      className="input-glass"
+                      value={editForm.category}
+                      onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {CATEGORIES.map(c => (
+                        <option key={c} value={c} style={{ background: '#1a1a2e' }}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', display: 'block', marginBottom: 6 }}>
+                      Catatan
+                    </label>
+                    <textarea
+                      className="input-glass"
+                      rows={3}
+                      placeholder="Catatan tambahan..."
+                      value={editForm.notes}
+                      onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </div>
+
+                  {/* Hash info (read-only) */}
+                  <div>
+                    <label style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem', display: 'block', marginBottom: 6 }}>
+                      SHA-256 Hash (tidak dapat diubah)
+                    </label>
+                    <div style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontFamily: 'Space Mono, monospace',
+                      fontSize: '0.65rem',
+                      color: 'rgba(255,249,133,0.5)',
+                      wordBreak: 'break-all',
+                      lineHeight: 1.5
+                    }}>
+                      {editingQRIS.hash}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Result message */}
+                {editResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.9rem 1rem',
+                      borderRadius: '12px',
+                      background: editResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                      border: `1px solid ${editResult.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
+                    }}
+                  >
+                    <p style={{
+                      color: editResult.success ? '#4ade80' : '#f87171',
+                      fontWeight: 600,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      {editResult.success ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                      {editResult.message || editResult.error}
+                    </p>
+                  </motion.div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="btn-secondary"
+                    onClick={closeEditModal}
+                    style={{ flex: 1 }}
+                  >
+                    Batal
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="btn-primary"
+                    onClick={handleEditSubmit}
+                    disabled={editLoading || !editForm.merchantName || !editForm.merchantId}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8
+                    }}
+                  >
+                    {editLoading ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="spinner"
+                        />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={16} />
+                        Simpan Perubahan
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   )
