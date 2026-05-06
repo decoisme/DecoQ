@@ -18,7 +18,6 @@ import {
   FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import QRISListItem from "../components/QRISListItem";
 
 const QRScanner = dynamic(() => import("../components/QRScanner"), {
@@ -365,29 +364,6 @@ export default function Admin() {
               >
                 Masukkan kunci admin untuk melanjutkan
               </p>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                style={{
-                  marginTop: "0.5rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <Image src="/logo.svg" alt="DecoQ" width={20} height={20} />
-                <span
-                  style={{
-                    color: "rgba(255,249,133,0.6)",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                  }}
-                >
-                  Powered by DecoQ
-                </span>
-              </motion.div>
             </div>
 
             <label
@@ -528,12 +504,6 @@ export default function Admin() {
                 <ArrowLeft size={14} strokeWidth={2.5} />
               </motion.button>
             </Link>
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            >
-              <Image src="/logo.svg" alt="DecoQ" width={32} height={32} />
-            </motion.div>
             <div>
               <h1
                 style={{ color: "#fff", fontWeight: 800, fontSize: "1.3rem" }}

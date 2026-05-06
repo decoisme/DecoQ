@@ -182,7 +182,8 @@ export default function Home() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
               gap: '1.5rem',
               width: '100%',
-              maxWidth: 720
+              maxWidth: 720,
+              margin: '0 auto'
             }}
           >
             {/* User Card */}

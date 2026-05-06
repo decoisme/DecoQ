@@ -11,7 +11,6 @@ import {
   Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import type { QRISMerchantInfo } from "../lib/qris";
 
 const QRScanner = dynamic(() => import("../components/QRScanner"), {
@@ -112,27 +111,17 @@ export default function Verify() {
               Kembali
             </motion.button>
           </Link>
-          <div
-            style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
-          >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+          <div>
+            <h1
+              style={{ color: "#fff", fontWeight: 800, fontSize: "1.3rem" }}
             >
-              <Image src="/logo.svg" alt="DecoQ" width={36} height={36} />
-            </motion.div>
-            <div>
-              <h1
-                style={{ color: "#fff", fontWeight: 800, fontSize: "1.3rem" }}
-              >
-                Verifikasi QRIS
-              </h1>
-              <p
-                style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8rem" }}
-              >
-                Powered by DecoQ
-              </p>
-            </div>
+              Verifikasi QRIS
+            </h1>
+            <p
+              style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8rem" }}
+            >
+              Powered by DecoQ
+            </p>
           </div>
         </motion.div>
 
