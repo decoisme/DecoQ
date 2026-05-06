@@ -94,7 +94,7 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    const img = new Image()
+    const img = document.createElement('img')
     img.src = url
     img.onload = async () => {
       const canvas = document.createElement('canvas')

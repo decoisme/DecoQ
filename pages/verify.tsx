@@ -229,48 +229,48 @@ export default function Verify() {
                       </motion.p>
                     </div>
 
-                  {/* Merchant info */}
-                  <div style={{
-                    background: 'rgba(34,197,94,0.06)', borderRadius: '14px',
-                    border: '1px solid rgba(34,197,94,0.2)', padding: '1.25rem',
-                    marginBottom: '1.25rem'
-                  }}>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600,
-                      letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
-                      Detail Merchant
-                    </p>
-                    {[
-                      { label: 'Nama Merchant', val: result.merchant?.name },
-                      { label: 'ID Merchant', val: result.merchant?.id },
-                      { label: 'Kategori', val: result.merchant?.category },
-                      { label: 'Terdaftar', val: result.merchant?.registeredAt
-                        ? new Date(result.merchant.registeredAt).toLocaleDateString('id-ID', { dateStyle: 'long' }) : '-' },
-                    ].map(({ label, val }) => (
-                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between',
-                        padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.83rem' }}>{label}</span>
-                        <span style={{ color: '#fff', fontWeight: 600, fontSize: '0.83rem', textAlign: 'right', maxWidth: '55%' }}>{val}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Hash */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem',
-                      letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>SHA-256 Hash</p>
+                    {/* Merchant info */}
                     <div style={{
-                      background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px',
-                      fontFamily: 'Space Mono, monospace', fontSize: '0.68rem',
-                      color: '#fff985', wordBreak: 'break-all', lineHeight: 1.5
+                      background: 'rgba(34,197,94,0.06)', borderRadius: '14px',
+                      border: '1px solid rgba(34,197,94,0.2)', padding: '1.25rem',
+                      marginBottom: '1.25rem'
                     }}>
-                      {result.hash}
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 600,
+                        letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                        Detail Merchant
+                      </p>
+                      {[
+                        { label: 'Nama Merchant', val: result.merchant?.name },
+                        { label: 'ID Merchant', val: result.merchant?.id },
+                        { label: 'Kategori', val: result.merchant?.category },
+                        { label: 'Terdaftar', val: result.merchant?.registeredAt
+                          ? new Date(result.merchant.registeredAt).toLocaleDateString('id-ID', { dateStyle: 'long' }) : '-' },
+                      ].map(({ label, val }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between',
+                          padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.83rem' }}>{label}</span>
+                          <span style={{ color: '#fff', fontWeight: 600, fontSize: '0.83rem', textAlign: 'right', maxWidth: '55%' }}>{val}</span>
+                        </div>
+                      ))}
                     </div>
-                  </div>
 
-                  <button className="btn-primary" onClick={reset} style={{ width: '100%' }}>
-                    Scan QRIS Lain
-                  </button>
-                </div>
+                    {/* Hash */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem',
+                        letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>SHA-256 Hash</p>
+                      <div style={{
+                        background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px',
+                        fontFamily: 'Space Mono, monospace', fontSize: '0.68rem',
+                        color: '#fff985', wordBreak: 'break-all', lineHeight: 1.5
+                      }}>
+                        {result.hash}
+                      </div>
+                    </div>
+
+                    <button className="btn-primary" onClick={reset} style={{ width: '100%' }}>
+                      Scan QRIS Lain
+                    </button>
+                  </div>
                 ) : (
                   /* DANGER */
                   <div>
@@ -298,64 +298,82 @@ export default function Verify() {
                           <AlertTriangle size={36} color="#f87171" strokeWidth={2.5} />
                         </motion.div>
                       </motion.div>
-                    <h2 style={{ color: '#f87171', fontWeight: 800, fontSize: '1.4rem', marginBottom: 4 }}>
-                      QRIS Tidak Dikenal
-                    </h2>
-                    <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.88rem', lineHeight: 1.6 }}>
-                      QRIS ini <strong style={{ color: '#f87171' }}>belum terdaftar</strong> di database kami.
-                      Segera beritahu kasir atau batalkan transaksi.
-                    </p>
-                  </div>
-
-                  <div style={{
-                    background: 'rgba(239,68,68,0.08)', borderRadius: '14px',
-                    border: '1px solid rgba(239,68,68,0.25)', padding: '1rem',
-                    marginBottom: '1.25rem'
-                  }}>
-                    <p style={{ color: '#fca5a5', fontSize: '0.85rem', lineHeight: 1.6, display: 'flex', gap: '0.5rem' }}>
-                      <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <span>
-                        <strong>Peringatan Keamanan:</strong> Jangan lanjutkan transaksi sebelum memverifikasi
-                        keaslian QRIS ini dengan pihak merchant atau pengelola.
-                      </span>
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem',
-                      letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Hash yang Dicek</p>
-                    <div style={{
-                      background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px',
-                      fontFamily: 'Space Mono, monospace', fontSize: '0.68rem',
-                      color: '#f87171', wordBreak: 'break-all', lineHeight: 1.5
-                    }}>
-                      {result.hash}
+                      <h2 style={{ color: '#f87171', fontWeight: 800, fontSize: '1.4rem', marginBottom: 4 }}>
+                        QRIS Tidak Dikenal
+                      </h2>
+                      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                        QRIS ini <strong style={{ color: '#f87171' }}>belum terdaftar</strong> di database kami.
+                        Segera beritahu kasir atau batalkan transaksi.
+                      </p>
                     </div>
+
+                    <div style={{
+                      background: 'rgba(239,68,68,0.08)', borderRadius: '14px',
+                      border: '1px solid rgba(239,68,68,0.25)', padding: '1rem',
+                      marginBottom: '1.25rem'
+                    }}>
+                      <p style={{ color: '#fca5a5', fontSize: '0.85rem', lineHeight: 1.6, display: 'flex', gap: '0.5rem' }}>
+                        <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span>
+                          <strong>Peringatan Keamanan:</strong> Jangan lanjutkan transaksi sebelum memverifikasi
+                          keaslian QRIS ini dengan pihak merchant atau pengelola.
+                        </span>
+                      </p>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem',
+                        letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Hash yang Dicek</p>
+                      <div style={{
+                        background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px',
+                        fontFamily: 'Space Mono, monospace', fontSize: '0.68rem',
+                        color: '#f87171', wordBreak: 'break-all', lineHeight: 1.5
+                      }}>
+                        {result.hash}
+                      </div>
+                    </div>
+
+                    <button className="btn-primary" onClick={reset} style={{ width: '100%' }}>
+                      Scan Ulang
+                    </button>
                   </div>
+                )}
+              </motion.div>
+            )}
 
-                  <button className="btn-primary" onClick={reset} style={{ width: '100%' }}>
-                    Scan Ulang
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {scanError && !loading && (
-            <div style={{
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-              borderRadius: '12px', padding: '1rem', textAlign: 'center', marginTop: '1rem'
-            }}>
-              <p style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <AlertTriangle size={16} />
-                {scanError}
-              </p>
-              <button className="btn-secondary" onClick={reset} style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
-                Coba Lagi
-              </button>
-            </div>
-          )}
-        </div>
+            {scanError && !loading && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.3)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  textAlign: 'center',
+                  marginTop: '1rem'
+                }}
+              >
+                <p style={{
+                  color: '#f87171',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <AlertTriangle size={16} />
+                  {scanError}
+                </p>
+                <button className="btn-secondary" onClick={reset} style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
+                  Coba Lagi
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Info */}
         {!result && !loading && (
