@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '../../lib/supabase'
+import { supabase, supabaseAdmin } from '../../lib/supabase'
 import { generateQRISHash } from '../../lib/hash'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -26,11 +26,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const isVerified = !error && !!data
 
-    // Log validasi
-    await supabase.from('validation_logs').insert({
+    // Get client info
+    const userAgent = req.headers['user-agent'] || 'unknown'
+    const ipAddress = req.headers['x-forwarded-for'] as string || 
+                      req.headers['x-real-ip'] as string || 
+                      req.socket.remoteAddress || 
+                      'unknown'
+
+    // Log verification dengan detail lengkap
+    await supabaseAdmin.from('verification_logs').insert({
       hash,
+      qris_id: data?.id || null,
       is_verified: isVerified,
-      user_agent: req.headers['user-agent'] || 'unknown'
+      merchant_name: data?.merchant_name || null,
+      merchant_id: data?.merchant_id || null,
+      scanned_data: rawQRIS.substring(0, 500), // Simpan sebagian data untuk audit
+      error_message: error?.message || null,
+      user_agent: userAgent,
+      ip_address: ipAddress
     })
 
     if (isVerified) {
@@ -53,6 +66,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } catch (err: any) {
     console.error('Validate error:', err)
+    
+    // Log error verification
+    try {
+      const hash = await generateQRISHash(rawQRIS)
+      await supabaseAdmin.from('verification_logs').insert({
+        hash,
+        qris_id: null,
+        is_verified: false,
+        scanned_data: rawQRIS.substring(0, 500),
+        error_message: err.message,
+        user_agent: req.headers['user-agent'] || 'unknown',
+        ip_address: req.headers['x-forwarded-for'] as string || 'unknown'
+      })
+    } catch (logError) {
+      console.error('Failed to log error:', logError)
+    }
+
     return res.status(500).json({ error: err.message || 'Internal server error' })
   }
 }
