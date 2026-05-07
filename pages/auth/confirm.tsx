@@ -141,9 +141,11 @@ export default function ConfirmInvitation() {
       
       let authUserId = existingUser?.auth_user_id
       
-      // If no auth account yet, create one
+      // If no auth account yet, this shouldn't happen (invite creates auth user)
+      // But if it does, create one
       if (!authUserId) {
-        console.log('📝 Creating new auth account...')
+        console.log('⚠️ No auth_user_id found, this is unexpected')
+        console.log('📝 Creating auth account with signUp...')
         
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email: inviteData.email,
@@ -157,18 +159,41 @@ export default function ConfirmInvitation() {
         })
         
         if (signUpError) {
-          // Check if error is "User already registered"
+          throw signUpError
+        }
+        
+        authUserId = authData.user?.id
+      } else {
+        console.log('✅ Auth account exists (from invite), updating password...')
+        
+        // User was invited, auth account exists but no password set yet
+        // We need to use the invite token to set password
+        // For now, try signUp which will update the existing invited user
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: inviteData.email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              role: inviteData.role
+            },
+            emailRedirectTo: `${window.location.origin}/dashboard`
+          }
+        })
+        
+        if (signUpError) {
+          // If signUp fails because user exists, it means they already set password
+          // Try to sign in instead
           if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
-            console.log('⚠️ User already registered in auth, trying to sign in...')
+            console.log('⚠️ User already registered, trying sign in...')
             
-            // Try to sign in instead
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email: inviteData.email,
               password
             })
             
             if (signInError) {
-              throw new Error('Email sudah terdaftar. Silakan gunakan password yang sudah ada atau reset password.')
+              throw new Error('Password salah. Silakan gunakan password yang sudah ada atau hubungi admin.')
             }
             
             authUserId = signInData.user?.id
@@ -178,24 +203,10 @@ export default function ConfirmInvitation() {
         } else {
           authUserId = authData.user?.id
         }
-        
-        if (!authUserId) {
-          throw new Error('Failed to get auth user ID')
-        }
-      } else {
-        console.log('✅ Auth account already exists, signing in...')
-        
-        // User already has auth account, just sign in
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: inviteData.email,
-          password
-        })
-        
-        if (signInError) {
-          throw new Error('Password salah. Silakan gunakan password yang benar atau reset password.')
-        }
-        
-        authUserId = signInData.user?.id
+      }
+      
+      if (!authUserId) {
+        throw new Error('Failed to get auth user ID')
       }
       
       // Update user record
