@@ -18,6 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const authHeader = req.headers.authorization as string
   
   let userRole = 'admin' // default
+  let userId: string | null = null
+  let userName = 'Admin'
+  let userEmail = ''
   let isAuthenticated = false
 
   // Try Bearer token first (new auth system)
@@ -30,12 +33,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Get user role from users table
         const { data: userData } = await supabaseAdmin
           .from('users')
-          .select('role, is_active')
+          .select('id, role, is_active, full_name, email')
           .eq('auth_user_id', user.id)
           .single()
 
         if (userData && userData.is_active) {
+          userId = userData.id
           userRole = userData.role
+          userName = userData.full_name || userData.email
+          userEmail = userData.email
           isAuthenticated = true
         }
       }
@@ -51,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     if (session) {
       userRole = session.role
+      userName = session.name
       isAuthenticated = true
     }
   }
@@ -88,12 +95,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { id } = req.body
+    
+    // Get QRIS data before deactivating
+    const { data: qrisData } = await supabaseAdmin
+      .from('qris_database')
+      .select('merchant_name, merchant_id, hash')
+      .eq('id', id)
+      .single()
+
     const { error } = await supabaseAdmin
       .from('qris_database')
       .update({ is_active: false })
       .eq('id', id)
 
     if (error) return res.status(500).json({ error: error.message })
+
+    // Log to audit_logs
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: userId,
+      admin_role: userRole,
+      admin_name: userName,
+      action: 'DEACTIVATE',
+      resource_type: 'QRIS',
+      resource_id: id,
+      details: {
+        merchant_name: qrisData?.merchant_name,
+        merchant_id: qrisData?.merchant_id,
+        hash: qrisData?.hash?.substring(0, 16) + '...',
+        user_email: userEmail
+      },
+      ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+      user_agent: req.headers['user-agent']
+    })
+
     return res.status(200).json({ success: true, message: 'QRIS dinonaktifkan' })
   }
 
@@ -110,6 +144,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id, action, ...updateData } = req.body
 
     if (action === 'activate') {
+      // Get QRIS data before activating
+      const { data: qrisData } = await supabaseAdmin
+        .from('qris_database')
+        .select('merchant_name, merchant_id, hash')
+        .eq('id', id)
+        .single()
+
       // Aktivasi kembali QRIS
       const { error } = await supabaseAdmin
         .from('qris_database')
@@ -117,10 +158,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', id)
 
       if (error) return res.status(500).json({ error: error.message })
+
+      // Log to audit_logs
+      await supabaseAdmin.from('audit_logs').insert({
+        user_id: userId,
+        admin_role: userRole,
+        admin_name: userName,
+        action: 'ACTIVATE',
+        resource_type: 'QRIS',
+        resource_id: id,
+        details: {
+          merchant_name: qrisData?.merchant_name,
+          merchant_id: qrisData?.merchant_id,
+          hash: qrisData?.hash?.substring(0, 16) + '...',
+          user_email: userEmail
+        },
+        ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+        user_agent: req.headers['user-agent']
+      })
+
       return res.status(200).json({ success: true, message: 'QRIS diaktifkan kembali' })
     }
 
     if (action === 'update') {
+      // Get old data before updating
+      const { data: oldData } = await supabaseAdmin
+        .from('qris_database')
+        .select('merchant_name, merchant_id, category, notes, hash')
+        .eq('id', id)
+        .single()
+
       // Update data QRIS
       const { error } = await supabaseAdmin
         .from('qris_database')
@@ -133,6 +200,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', id)
 
       if (error) return res.status(500).json({ error: error.message })
+
+      // Log to audit_logs
+      await supabaseAdmin.from('audit_logs').insert({
+        user_id: userId,
+        admin_role: userRole,
+        admin_name: userName,
+        action: 'UPDATE',
+        resource_type: 'QRIS',
+        resource_id: id,
+        details: {
+          hash: oldData?.hash?.substring(0, 16) + '...',
+          old_data: {
+            merchant_name: oldData?.merchant_name,
+            merchant_id: oldData?.merchant_id,
+            category: oldData?.category,
+            notes: oldData?.notes
+          },
+          new_data: {
+            merchant_name: updateData.merchantName,
+            merchant_id: updateData.merchantId,
+            category: updateData.category,
+            notes: updateData.notes
+          },
+          user_email: userEmail
+        },
+        ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+        user_agent: req.headers['user-agent']
+      })
+
       return res.status(200).json({ success: true, message: 'Data QRIS berhasil diupdate' })
     }
 

@@ -19,6 +19,7 @@ import QRISListItem from "../components/QRISListItem";
 import RestrictionModal from "../components/RestrictionModal";
 import ManageAdminTab from "../components/ManageAdminTab";
 import RegisterQRISTab from "../components/RegisterQRISTab";
+import EditQRISModal from "../components/EditQRISModal";
 
 type AdminRole = 'admin' | 'superadmin'
 
@@ -74,6 +75,12 @@ export default function DashboardNew() {
     isOpen: boolean;
     action: string;
   }>({ isOpen: false, action: "" });
+
+  // Edit modal
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    qris: QRISEntry | null;
+  }>({ isOpen: false, qris: null });
 
   // Check auth on mount
   useEffect(() => {
@@ -281,8 +288,7 @@ export default function DashboardNew() {
       showRestriction('mengedit data QRIS');
       return;
     }
-    // TODO: Implement edit modal
-    alert('Edit modal coming soon!');
+    setEditModal({ isOpen: true, qris });
   };
 
   const filtered = list.filter(
@@ -596,6 +602,18 @@ export default function DashboardNew() {
           action={restrictionModal.action}
         />
       </AnimatePresence>
+
+      {/* Edit QRIS Modal */}
+      <EditQRISModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, qris: null })}
+        qris={editModal.qris}
+        sessionToken={sessionToken}
+        onSuccess={() => {
+          fetchList();
+          fetchStats();
+        }}
+      />
 
       <style jsx global>{`
         @media (max-width: 768px) {
