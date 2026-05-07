@@ -301,9 +301,9 @@ export default function PasswordResetRequestsTab({ sessionToken }: Props) {
                         className="tag" 
                         style={{ 
                           fontSize: '0.75rem',
-                          background: 'rgba(96,165,250,0.15)',
-                          color: '#60a5fa',
-                          border: '1px solid rgba(96,165,250,0.3)'
+                          background: 'rgba(139,92,246,0.15)',
+                          color: '#a78bfa',
+                          border: '1px solid rgba(139,92,246,0.3)'
                         }}
                       >
                         <CheckCircle size={12} />
