@@ -21,6 +21,9 @@ const transporter = nodemailer.createTransport({
     user: EMAIL_USER,
     pass: EMAIL_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: false // Allow self-signed certificates in development
+  }
 })
 
 // Verify transporter configuration
