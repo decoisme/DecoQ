@@ -83,6 +83,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const hash = await generateQRISHash(rawQRIS)
+    
+    // DEBUG: Log hash generation
+    console.log('📝 Register - Generated hash:', hash)
+    console.log('📝 Register - Raw QRIS length:', rawQRIS.length)
+    console.log('📝 Register - Raw QRIS preview:', rawQRIS.substring(0, 50))
 
     // Cek duplikat
     const { data: existing } = await supabaseAdmin

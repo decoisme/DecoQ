@@ -15,14 +15,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const hash = await generateQRISHash(rawQRIS)
+    
+    // DEBUG: Log hash
+    console.log('🔍 Generated hash:', hash)
+    console.log('🔍 Raw QRIS length:', rawQRIS.length)
+    console.log('🔍 Raw QRIS preview:', rawQRIS.substring(0, 50))
 
     // Cari di database
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('qris_database')
       .select('*')
       .eq('hash', hash)
       .eq('is_active', true)
       .single()
+    
+    // DEBUG: Log query result
+    console.log('🔍 Query error:', error)
+    console.log('🔍 Query data:', data)
 
     const isVerified = !error && !!data
 

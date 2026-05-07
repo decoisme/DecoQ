@@ -45,9 +45,7 @@ CREATE TABLE IF NOT EXISTS qris_database (
   registered_by TEXT NOT NULL,
   registered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   is_active BOOLEAN DEFAULT TRUE,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  notes TEXT
 );
 
 -- Create indexes
@@ -69,22 +67,18 @@ INSERT INTO qris_database (
   registered_by,
   registered_at,
   is_active,
-  notes,
-  created_at,
-  updated_at
+  notes
 )
 SELECT 
   id,
   hash,
   merchant_name,
   merchant_id,
-  category,
+  COALESCE(category, 'Umum') as category,
   registered_by,
   registered_at,
-  is_active,
-  notes,
-  COALESCE(created_at, registered_at) as created_at,
-  COALESCE(updated_at, registered_at) as updated_at
+  COALESCE(is_active, true) as is_active,
+  notes
 FROM qris_registry
 WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'qris_registry')
 ON CONFLICT (hash) DO NOTHING; -- Skip duplicates
