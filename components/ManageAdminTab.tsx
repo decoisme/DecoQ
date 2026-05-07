@@ -379,6 +379,7 @@ export default function ManageAdminTab({ sessionToken }: Props) {
                   <th style={thStyle}>Nama</th>
                   <th style={thStyle}>Role</th>
                   <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Last Active</th>
                   <th style={thStyle}>Created</th>
                   <th style={thStyle}>Actions</th>
                 </tr>
@@ -446,6 +447,29 @@ export default function ManageAdminTab({ sessionToken }: Props) {
                       ) : (
                         <span className="tag tag-success" style={{ fontSize: '0.75rem' }}>
                           ● Active
+                        </span>
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      {user.last_login_at ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
+                            {new Date(user.last_login_at).toLocaleDateString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem' }}>
+                            {new Date(user.last_login_at).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                          Belum pernah login
                         </span>
                       )}
                     </td>

@@ -75,6 +75,12 @@ export default function Login() {
 
         console.log('✅ User found:', userData)
 
+        // Update last_login_at
+        await supabase
+          .from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('auth_user_id', data.user.id)
+
         if (!userData.is_active) {
           setError('Akun Anda tidak aktif. Hubungi administrator.')
           await supabase.auth.signOut()

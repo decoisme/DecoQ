@@ -214,6 +214,7 @@ export default function ConfirmInvitation() {
         auth_user_id: authUserId,
         full_name: fullName,
         is_active: true,
+        last_login_at: new Date().toISOString(), // Track first login
         updated_at: new Date().toISOString()
       }
       
