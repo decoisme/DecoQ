@@ -92,31 +92,8 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Check if already active
-      // User is considered active if:
-      // 1. status === 'active' (if column exists), OR
-      // 2. is_active === true AND has auth_user_id (already signed up)
-      const hasAuthAccount = user.auth_user_id && user.auth_user_id !== null
-      const isAlreadyActive = user.status === 'active' || (user.is_active && hasAuthAccount)
-      
-      console.log('🔍 Active check:', { 
-        status: user.status, 
-        is_active: user.is_active, 
-        auth_user_id: user.auth_user_id,
-        hasAuthAccount,
-        isAlreadyActive 
-      })
-      
-      if (isAlreadyActive) {
-        console.log('✅ User already active')
-        setStatus('error')
-        setMessage('Akun sudah aktif. Silakan login.')
-        setTimeout(() => router.push('/auth/login'), 2000)
-        return
-      }
-      
-      // Valid invitation
-      console.log('✅ Token valid')
+      // Always show setup form - let Supabase handle if email already exists
+      console.log('✅ Token valid, showing setup form')
       setInviteData({
         email: user.email,
         role: user.role as 'admin' | 'superadmin',
@@ -155,29 +132,75 @@ export default function ConfirmInvitation() {
     setSettingUp(true)
     
     try {
-      // Sign up user with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role: inviteData.role
+      // Check if user already has auth account
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('auth_user_id')
+        .eq('id', inviteData.userId)
+        .single()
+      
+      let authUserId = existingUser?.auth_user_id
+      
+      // If no auth account yet, create one
+      if (!authUserId) {
+        console.log('📝 Creating new auth account...')
+        
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: inviteData.email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              role: inviteData.role
+            }
           }
+        })
+        
+        if (signUpError) {
+          // Check if error is "User already registered"
+          if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
+            console.log('⚠️ User already registered in auth, trying to sign in...')
+            
+            // Try to sign in instead
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: inviteData.email,
+              password
+            })
+            
+            if (signInError) {
+              throw new Error('Email sudah terdaftar. Silakan gunakan password yang sudah ada atau reset password.')
+            }
+            
+            authUserId = signInData.user?.id
+          } else {
+            throw signUpError
+          }
+        } else {
+          authUserId = authData.user?.id
         }
-      })
-      
-      if (signUpError) {
-        throw signUpError
-      }
-      
-      if (!authData.user) {
-        throw new Error('Failed to create auth user')
+        
+        if (!authUserId) {
+          throw new Error('Failed to get auth user ID')
+        }
+      } else {
+        console.log('✅ Auth account already exists, signing in...')
+        
+        // User already has auth account, just sign in
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: inviteData.email,
+          password
+        })
+        
+        if (signInError) {
+          throw new Error('Password salah. Silakan gunakan password yang benar atau reset password.')
+        }
+        
+        authUserId = signInData.user?.id
       }
       
       // Update user record
       const updateData: any = {
-        auth_user_id: authData.user.id,
+        auth_user_id: authUserId,
         full_name: fullName,
         is_active: true,
         updated_at: new Date().toISOString()

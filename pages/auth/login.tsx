@@ -8,6 +8,8 @@ import Link from 'next/link'
 
 export default function Login() {
   const router = useRouter()
+  const { email: emailParam } = router.query // Get email from URL query
+  
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
@@ -17,6 +19,13 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // Pre-fill email if provided in URL
+  useState(() => {
+    if (emailParam && typeof emailParam === 'string') {
+      setEmail(emailParam)
+    }
+  })
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
