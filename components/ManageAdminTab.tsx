@@ -21,11 +21,11 @@ type User = {
   role: 'admin' | 'superadmin'
   full_name: string | null
   is_active: boolean
-  status: 'pending' | 'active' | 'inactive'
+  status?: 'pending' | 'active' | 'inactive' // Optional for backward compatibility
   invited_at: string
   last_login_at: string | null
   created_at: string
-  invitation_expires_at: string | null
+  invitation_expires_at?: string | null // Optional
 }
 
 type Stats = {

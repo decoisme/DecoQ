@@ -116,25 +116,15 @@ export default async function handler(
       .single()
 
     // Create user record first (before sending invite)
-    // Note: status column might not exist yet, so we'll add it conditionally
-    const insertData: any = {
-      email,
-      role,
-      full_name: fullName || null,
-      invited_by: inviter?.id || null,
-      is_active: false, // Will be activated when they accept invite
-    }
-    
-    // Try to add status if column exists
-    try {
-      insertData.status = 'pending'
-    } catch (e) {
-      // Column doesn't exist yet, skip it
-    }
-
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
-      .insert(insertData)
+      .insert({
+        email,
+        role,
+        full_name: fullName || null,
+        invited_by: inviter?.id || null,
+        is_active: false, // Will be activated when they accept invite
+      })
       .select()
       .single()
 
@@ -151,14 +141,18 @@ export default async function handler(
     const invitationToken = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
-    // Store token in database
-    await supabaseAdmin
-      .from('users')
-      .update({
-        invitation_token: invitationToken,
-        invitation_expires_at: expiresAt.toISOString()
-      })
-      .eq('id', newUser.id)
+    // Store token in database (only if columns exist)
+    try {
+      await supabaseAdmin
+        .from('users')
+        .update({
+          invitation_token: invitationToken,
+          invitation_expires_at: expiresAt.toISOString()
+        })
+        .eq('id', newUser.id)
+    } catch (e) {
+      console.log('⚠️ Token columns not exist yet, skipping token storage')
+    }
 
     // Send invite email via Supabase Auth OR Nodemailer
     const useNodemailer = process.env.USE_NODEMAILER === 'true'

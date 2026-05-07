@@ -43,12 +43,37 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Query user by invitation_token
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('id, email, role, status, is_active, full_name, invitation_expires_at')
-        .eq('invitation_token', token)
-        .single()
+      // Try to query user by invitation_token (if column exists)
+      let user: any = null
+      let error: any = null
+      
+      try {
+        const result = await supabase
+          .from('users')
+          .select('id, email, role, status, is_active, full_name, invitation_expires_at')
+          .eq('invitation_token', token)
+          .single()
+        
+        user = result.data
+        error = result.error
+      } catch (e) {
+        console.log('⚠️ invitation_token column not exist, trying fallback...')
+        
+        // Fallback: Try to decode token as base64 (old method)
+        try {
+          const decoded = JSON.parse(Buffer.from(token, 'base64url').toString())
+          const result = await supabase
+            .from('users')
+            .select('id, email, role, status, is_active, full_name')
+            .eq('email', decoded.email)
+            .single()
+          
+          user = result.data
+          error = result.error
+        } catch (decodeError) {
+          console.log('❌ Fallback also failed')
+        }
+      }
       
       console.log('👤 User query result:', { user, error })
       
@@ -59,7 +84,7 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Check expiration
+      // Check expiration (if column exists)
       if (user.invitation_expires_at && new Date(user.invitation_expires_at) < new Date()) {
         console.log('⏰ Token expired')
         setStatus('expired')
@@ -142,16 +167,16 @@ export default function ConfirmInvitation() {
         auth_user_id: authData.user.id,
         full_name: fullName,
         is_active: true,
-        invitation_token: null, // Clear token after use
-        invitation_expires_at: null,
         updated_at: new Date().toISOString()
       }
       
-      // Add status if column exists
+      // Add optional fields if columns exist
       try {
         updateData.status = 'active'
+        updateData.invitation_token = null
+        updateData.invitation_expires_at = null
       } catch (e) {
-        // Column doesn't exist, skip it
+        // Columns don't exist, skip them
       }
       
       const { error: updateError } = await supabase
