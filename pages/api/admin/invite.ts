@@ -21,21 +21,26 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  console.log('📨 Invite request received:', { email: req.body.email, role: req.body.role })
+
   try {
     const { email, role = 'admin', fullName } = req.body
 
     // Validate input
     if (!email || !email.includes('@')) {
+      console.log('❌ Invalid email:', email)
       return res.status(400).json({ error: 'Email valid diperlukan' })
     }
 
     if (!['admin', 'superadmin'].includes(role)) {
+      console.log('❌ Invalid role:', role)
       return res.status(400).json({ error: 'Role tidak valid' })
     }
 
     // Get current user from session
     const authHeader = req.headers.authorization
     if (!authHeader) {
+      console.log('❌ No auth header')
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
@@ -43,8 +48,11 @@ export default async function handler(
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
 
     if (userError || !user) {
+      console.log('❌ Invalid token:', userError)
       return res.status(401).json({ error: 'Invalid token' })
     }
+
+    console.log('✅ Current user:', user.email)
 
     // Check if current user is superadmin
     const { data: currentUser, error: currentUserError } = await supabaseAdmin
@@ -123,7 +131,8 @@ export default async function handler(
     let authUserId = null
     
     // Always try Supabase Auth first (this creates the auth user)
-    console.log('📧 Sending invite via Supabase Auth...')
+    console.log('📧 Sending invite via Supabase Auth to:', email)
+    console.log('🔗 Redirect URL:', `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`)
     
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email,
@@ -138,17 +147,21 @@ export default async function handler(
     )
 
     if (inviteError) {
-      console.error('Supabase invite error:', inviteError)
+      console.error('❌ Supabase invite error:', inviteError)
+      console.error('Error details:', JSON.stringify(inviteError, null, 2))
       return res.status(500).json({ 
         error: 'Gagal mengirim email invite',
         details: inviteError.message
       })
     }
 
+    console.log('✅ Supabase invite response:', inviteData)
+
     // Get the auth user ID from invite
     authUserId = inviteData.user?.id
     
     if (!authUserId) {
+      console.error('❌ No auth_user_id from invite response')
       return res.status(500).json({ 
         error: 'Gagal mendapatkan auth user ID'
       })
@@ -158,6 +171,8 @@ export default async function handler(
     console.log('✅ Invite sent via Supabase Auth, auth_user_id:', authUserId)
     
     // Now create user record with auth_user_id
+    console.log('💾 Inserting user record to database...')
+    
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -172,13 +187,16 @@ export default async function handler(
       .single()
 
     if (insertError) {
-      console.error('Insert error:', insertError)
+      console.error('❌ Insert error:', insertError)
+      console.error('Insert error details:', JSON.stringify(insertError, null, 2))
       
       // Rollback: delete auth user
+      console.log('🔄 Rolling back: deleting auth user...')
       try {
         await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        console.log('✅ Auth user deleted')
       } catch (e) {
-        console.error('Failed to rollback auth user:', e)
+        console.error('❌ Failed to rollback auth user:', e)
       }
       
       return res.status(500).json({ 
@@ -186,6 +204,8 @@ export default async function handler(
         details: insertError.message 
       })
     }
+    
+    console.log('✅ User record created:', newUser.id)
     
     // Try to store token if columns exist (optional)
     const crypto = require('crypto')
