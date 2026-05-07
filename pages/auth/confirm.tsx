@@ -50,7 +50,7 @@ export default function ConfirmInvitation() {
       try {
         const result = await supabase
           .from('users')
-          .select('id, email, role, status, is_active, full_name, invitation_expires_at')
+          .select('id, email, role, status, is_active, full_name, invitation_expires_at, auth_user_id')
           .eq('invitation_token', token)
           .single()
         
@@ -64,7 +64,7 @@ export default function ConfirmInvitation() {
           const decoded = JSON.parse(Buffer.from(token, 'base64url').toString())
           const result = await supabase
             .from('users')
-            .select('id, email, role, status, is_active, full_name')
+            .select('id, email, role, status, is_active, full_name, auth_user_id')
             .eq('email', decoded.email)
             .single()
           
@@ -92,8 +92,21 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Check if already active (check both status and is_active for backward compatibility)
-      const isAlreadyActive = user.status === 'active' || user.is_active
+      // Check if already active
+      // User is considered active if:
+      // 1. status === 'active' (if column exists), OR
+      // 2. is_active === true AND has auth_user_id (already signed up)
+      const hasAuthAccount = user.auth_user_id && user.auth_user_id !== null
+      const isAlreadyActive = user.status === 'active' || (user.is_active && hasAuthAccount)
+      
+      console.log('🔍 Active check:', { 
+        status: user.status, 
+        is_active: user.is_active, 
+        auth_user_id: user.auth_user_id,
+        hasAuthAccount,
+        isAlreadyActive 
+      })
+      
       if (isAlreadyActive) {
         console.log('✅ User already active')
         setStatus('error')
