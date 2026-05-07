@@ -1,14 +1,57 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabaseAdmin } from '../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { verifyAdminKey } from './auth-admin'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const adminKey = req.headers['x-admin-key'] as string
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
-  // Verify admin key
-  const session = verifyAdminKey(adminKey)
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Support both admin key (legacy) and Bearer token (new)
+  const adminKey = req.headers['x-admin-key'] as string
+  const authHeader = req.headers.authorization as string
   
-  if (!session) {
+  let isAuthenticated = false
+
+  // Try Bearer token first (new auth system)
+  if (authHeader) {
+    try {
+      const token = authHeader.replace('Bearer ', '')
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+
+      if (!userError && user) {
+        // Get user role from users table
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('is_active')
+          .eq('auth_user_id', user.id)
+          .single()
+
+        if (userData && userData.is_active) {
+          isAuthenticated = true
+        }
+      }
+    } catch (error) {
+      console.error('Token auth error:', error)
+    }
+  }
+
+  // Fallback to admin key (legacy)
+  if (!isAuthenticated && adminKey) {
+    const session = verifyAdminKey(adminKey)
+    if (session) {
+      isAuthenticated = true
+    }
+  }
+
+  if (!isAuthenticated) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

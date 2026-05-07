@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Calculate stats manually (no view dependency)
     const [qrisResult, verificationResult] = await Promise.all([
       supabaseAdmin.from('qris_database').select('id, is_active'),
-      supabaseAdmin.from('validation_logs').select('id, is_verified, validated_at')
+      supabaseAdmin.from('verification_logs').select('id, is_verified, validated_at')
     ])
 
     const totalQris = qrisResult.data?.length || 0
