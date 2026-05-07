@@ -123,7 +123,8 @@ export default async function handler(
         role,
         full_name: fullName || null,
         invited_by: inviter?.id || null,
-        is_active: false // Will be activated when they accept invite
+        is_active: false, // Will be activated when they accept invite
+        status: 'pending' // New: pending status
       })
       .select()
       .single()
@@ -132,6 +133,20 @@ export default async function handler(
       console.error('Insert error:', insertError)
       return res.status(500).json({ error: 'Gagal membuat user record' })
     }
+
+    // Generate secure invitation token
+    const crypto = require('crypto')
+    const invitationToken = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    // Store token in database
+    await supabaseAdmin
+      .from('users')
+      .update({
+        invitation_token: invitationToken,
+        invitation_expires_at: expiresAt.toISOString()
+      })
+      .eq('id', newUser.id)
 
     // Send invite email via Supabase Auth OR Nodemailer
     const useNodemailer = process.env.USE_NODEMAILER === 'true'
@@ -143,19 +158,7 @@ export default async function handler(
       // Use Nodemailer for custom email
       console.log('📧 Sending invite via Nodemailer...')
       
-      // Generate confirmation token with crypto for better security
-      const crypto = require('crypto')
-      const tokenData = {
-        email,
-        role,
-        userId: newUser.id,
-        exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-        nonce: crypto.randomBytes(16).toString('hex') // Add randomness
-      }
-      
-      const confirmationToken = Buffer.from(JSON.stringify(tokenData)).toString('base64url')
-      
-      const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${confirmationToken}`
+      const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${invitationToken}`
       
       console.log('🔗 Confirmation URL:', confirmationUrl)
       

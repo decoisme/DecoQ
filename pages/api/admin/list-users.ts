@@ -61,6 +61,8 @@ export default async function handler(
         role,
         full_name,
         is_active,
+        status,
+        invitation_expires_at,
         invited_at,
         last_login_at,
         created_at,
@@ -99,14 +101,15 @@ export default async function handler(
     if (statsError || !stats) {
       const { data: allUsers } = await supabaseAdmin
         .from('users')
-        .select('role, is_active')
+        .select('role, is_active, status')
 
       if (allUsers) {
         statsData = {
           total_superadmins: allUsers.filter(u => u.role === 'superadmin' && u.is_active).length,
           total_admins: allUsers.filter(u => u.role === 'admin' && u.is_active).length,
           total_active_users: allUsers.filter(u => u.is_active).length,
-          total_inactive_users: allUsers.filter(u => !u.is_active).length,
+          total_inactive_users: allUsers.filter(u => !u.is_active && u.status !== 'pending').length,
+          total_pending_users: allUsers.filter(u => u.status === 'pending').length,
           total_users: allUsers.length
         }
       }
@@ -120,6 +123,7 @@ export default async function handler(
         total_admins: 0,
         total_active_users: 0,
         total_inactive_users: 0,
+        total_pending_users: 0,
         total_users: 0
       }
     })

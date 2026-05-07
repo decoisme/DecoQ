@@ -37,27 +37,17 @@ export default function ConfirmInvitation() {
     try {
       console.log('🔍 Verifying token:', token)
       
-      // Decode token
-      const decoded = JSON.parse(
-        Buffer.from(token as string, 'base64url').toString()
-      )
-      
-      console.log('📦 Decoded token:', { email: decoded.email, role: decoded.role, exp: new Date(decoded.exp) })
-      
-      // Check expiration
-      if (decoded.exp < Date.now()) {
-        console.log('⏰ Token expired')
-        setStatus('expired')
-        setMessage('Link undangan sudah kadaluarsa. Silakan minta undangan baru.')
+      if (!token || typeof token !== 'string') {
+        setStatus('error')
+        setMessage('Token tidak valid atau format salah.')
         return
       }
       
-      // Verify user exists and is not active yet
+      // Query user by invitation_token
       const { data: user, error } = await supabase
         .from('users')
-        .select('id, email, role, is_active, full_name')
-        .eq('id', decoded.userId)
-        .eq('email', decoded.email)
+        .select('id, email, role, status, is_active, full_name, invitation_expires_at')
+        .eq('invitation_token', token)
         .single()
       
       console.log('👤 User query result:', { user, error })
@@ -69,7 +59,16 @@ export default function ConfirmInvitation() {
         return
       }
       
-      if (user.is_active) {
+      // Check expiration
+      if (user.invitation_expires_at && new Date(user.invitation_expires_at) < new Date()) {
+        console.log('⏰ Token expired')
+        setStatus('expired')
+        setMessage('Link undangan sudah kadaluarsa. Silakan minta undangan baru.')
+        return
+      }
+      
+      // Check if already active
+      if (user.status === 'active' || user.is_active) {
         console.log('✅ User already active')
         setStatus('error')
         setMessage('Akun sudah aktif. Silakan login.')
@@ -80,9 +79,9 @@ export default function ConfirmInvitation() {
       // Valid invitation
       console.log('✅ Token valid')
       setInviteData({
-        email: decoded.email,
-        role: decoded.role,
-        userId: decoded.userId
+        email: user.email,
+        role: user.role as 'admin' | 'superadmin',
+        userId: user.id
       })
       setFullName(user.full_name || '')
       setStatus('success')
@@ -91,7 +90,7 @@ export default function ConfirmInvitation() {
     } catch (error) {
       console.error('❌ Token verification error:', error)
       setStatus('error')
-      setMessage('Token tidak valid atau format salah.')
+      setMessage('Terjadi kesalahan saat memverifikasi token.')
     }
   }
 
@@ -144,6 +143,9 @@ export default function ConfirmInvitation() {
           auth_user_id: authData.user.id,
           full_name: fullName,
           is_active: true,
+          status: 'active', // Change from pending to active
+          invitation_token: null, // Clear token after use
+          invitation_expires_at: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', inviteData.userId)

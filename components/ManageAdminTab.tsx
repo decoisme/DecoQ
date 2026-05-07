@@ -21,9 +21,11 @@ type User = {
   role: 'admin' | 'superadmin'
   full_name: string | null
   is_active: boolean
+  status: 'pending' | 'active' | 'inactive'
   invited_at: string
   last_login_at: string | null
   created_at: string
+  invitation_expires_at: string | null
 }
 
 type Stats = {
@@ -31,6 +33,7 @@ type Stats = {
   total_admins: number
   total_active_users: number
   total_inactive_users: number
+  total_pending_users: number
   total_users: number
 }
 
@@ -219,7 +222,7 @@ export default function ManageAdminTab({ sessionToken }: Props) {
       {stats && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '1rem',
           marginBottom: '2rem'
         }}>
@@ -250,6 +253,16 @@ export default function ManageAdminTab({ sessionToken }: Props) {
             </div>
             <div style={{ color: '#fff', fontSize: '2rem', fontWeight: 800 }}>
               {stats.total_active_users}
+            </div>
+          </div>
+
+          <div className="glass" style={{ padding: '1.25rem', borderRadius: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <User size={20} color="#fbbf24" />
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Pending</span>
+            </div>
+            <div style={{ color: '#fff', fontSize: '2rem', fontWeight: 800 }}>
+              {stats.total_pending_users || 0}
             </div>
           </div>
 
@@ -414,9 +427,23 @@ export default function ManageAdminTab({ sessionToken }: Props) {
                       </span>
                     </td>
                     <td style={tdStyle}>
-                      <span className={user.is_active ? 'tag tag-success' : 'tag tag-danger'} style={{ fontSize: '0.75rem' }}>
-                        {user.is_active ? '● Active' : '○ Inactive'}
-                      </span>
+                      {user.status === 'pending' ? (
+                        <span 
+                          className="tag" 
+                          style={{ 
+                            fontSize: '0.75rem',
+                            background: 'rgba(251,191,36,0.15)',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(251,191,36,0.3)'
+                          }}
+                        >
+                          ⏳ Pending
+                        </span>
+                      ) : (
+                        <span className={user.is_active ? 'tag tag-success' : 'tag tag-danger'} style={{ fontSize: '0.75rem' }}>
+                          {user.is_active ? '● Active' : '○ Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td style={tdStyle}>
                       <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
