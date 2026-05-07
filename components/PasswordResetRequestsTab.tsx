@@ -19,7 +19,7 @@ type PasswordResetRequest = {
   email: string
   full_name: string
   reason: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'completed'
   reset_token: string | null
   reset_token_expires_at: string | null
   reviewed_by: string | null
@@ -55,7 +55,10 @@ export default function PasswordResetRequestsTab({ sessionToken }: Props) {
   const fetchRequests = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/password-reset-requests?status=${filterStatus}`, {
+      // For approved filter, also include completed requests
+      const statusParam = filterStatus === 'approved' ? 'approved,completed' : filterStatus
+      
+      const res = await fetch(`/api/admin/password-reset-requests?status=${statusParam}`, {
         headers: {
           'Authorization': `Bearer ${sessionToken}`
         }
@@ -290,7 +293,21 @@ export default function PasswordResetRequestsTab({ sessionToken }: Props) {
                     {request.status === 'approved' && (
                       <span className="tag tag-success" style={{ fontSize: '0.75rem' }}>
                         <CheckCircle size={12} />
-                        Approved
+                        Approved (Waiting Reset)
+                      </span>
+                    )}
+                    {request.status === 'completed' && (
+                      <span 
+                        className="tag" 
+                        style={{ 
+                          fontSize: '0.75rem',
+                          background: 'rgba(96,165,250,0.15)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(96,165,250,0.3)'
+                        }}
+                      >
+                        <CheckCircle size={12} />
+                        Completed (Password Reset)
                       </span>
                     )}
                     {request.status === 'rejected' && (

@@ -201,11 +201,19 @@ export default async function handler(
     if (req.method === 'GET') {
       const { status = 'pending' } = req.query
 
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('password_reset_requests')
         .select('*')
-        .eq('status', status)
-        .order('created_at', { ascending: false })
+
+      // Handle multiple statuses (comma-separated)
+      if (typeof status === 'string' && status.includes(',')) {
+        const statuses = status.split(',').map(s => s.trim())
+        query = query.in('status', statuses)
+      } else {
+        query = query.eq('status', status)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         throw error
