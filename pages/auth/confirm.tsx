@@ -127,6 +127,8 @@ export default function ConfirmInvitation() {
     setSettingUp(true)
     
     try {
+      console.log('🔐 Setting up account for:', inviteData.email)
+      
       // Check if user already has auth account
       const { data: existingUser } = await supabase
         .from('users')
@@ -136,80 +138,95 @@ export default function ConfirmInvitation() {
       
       let authUserId = existingUser?.auth_user_id
       
-      // If no auth account yet, this shouldn't happen (invite creates auth user)
-      // But if it does, create one
       if (!authUserId) {
-        console.log('⚠️ No auth_user_id found, this is unexpected')
-        console.log('📝 Creating auth account with signUp...')
+        console.error('❌ No auth_user_id found - this should not happen for invited users')
+        throw new Error('Auth account tidak ditemukan. Silakan minta undangan baru.')
+      }
+      
+      console.log('✅ Auth account exists:', authUserId)
+      console.log('📝 Setting password via signInWithPassword (OTP flow)...')
+      
+      // For invited users, we need to use a different approach
+      // The user was created via inviteUserByEmail, which sends them a magic link
+      // When they click the link, they're already authenticated
+      // We just need to update their password
+      
+      // First, try to sign in with the email (this will fail but that's ok)
+      // Then use updateUser to set the password
+      try {
+        // Try to get current session (from email link)
+        const { data: { session } } = await supabase.auth.getSession()
         
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: inviteData.email,
-          password,
-          options: {
+        if (session && session.user.email === inviteData.email) {
+          console.log('✅ User already has session from email link')
+          
+          // Update password for the authenticated user
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: password,
             data: {
-              full_name: fullName,
-              role: inviteData.role
+              full_name: fullName
             }
+          })
+          
+          if (updateError) {
+            throw updateError
           }
-        })
-        
-        if (signUpError) {
-          throw signUpError
-        }
-        
-        authUserId = authData.user?.id
-      } else {
-        console.log('✅ Auth account exists (from invite), updating password...')
-        
-        // User was invited, auth account exists but no password set yet
-        // We need to use the invite token to set password
-        // For now, try signUp which will update the existing invited user
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: inviteData.email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              role: inviteData.role
-            },
-            emailRedirectTo: `${window.location.origin}/dashboard`
-          }
-        })
-        
-        if (signUpError) {
-          // If signUp fails because user exists, it means they already set password
-          // Try to sign in instead
-          if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
-            console.log('⚠️ User already registered, trying sign in...')
-            
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: inviteData.email,
-              password
-            })
-            
-            if (signInError) {
-              throw new Error('Password salah. Silakan gunakan password yang sudah ada atau hubungi admin.')
-            }
-            
-            authUserId = signInData.user?.id
-          } else {
-            throw signUpError
-          }
+          
+          console.log('✅ Password updated successfully')
         } else {
-          authUserId = authData.user?.id
+          console.log('⚠️ No session found, trying alternative method...')
+          
+          // Alternative: Use signUp which will update the invited user
+          const { data: authData, error: signUpError } = await supabase.auth.signUp({
+            email: inviteData.email,
+            password: password,
+            options: {
+              data: {
+                full_name: fullName,
+                role: inviteData.role
+              }
+            }
+          })
+          
+          if (signUpError) {
+            // If error says user already exists, try to sign in
+            if (signUpError.message.includes('already') || signUpError.message.includes('exists')) {
+              console.log('⚠️ User exists, trying signIn...')
+              
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: inviteData.email,
+                password: password
+              })
+              
+              if (signInError) {
+                throw new Error('Gagal login. Password mungkin sudah di-set sebelumnya.')
+              }
+              
+              authUserId = signInData.user?.id
+            } else {
+              throw signUpError
+            }
+          } else {
+            authUserId = authData.user?.id
+            
+            // Sign in after signup
+            await supabase.auth.signInWithPassword({
+              email: inviteData.email,
+              password: password
+            })
+          }
         }
+      } catch (authError: any) {
+        console.error('❌ Auth error:', authError)
+        throw new Error(authError.message || 'Gagal mengatur password')
       }
       
-      if (!authUserId) {
-        throw new Error('Failed to get auth user ID')
-      }
-      
-      // Update user record
+      // Update user record in database
       const updateData: any = {
         auth_user_id: authUserId,
         full_name: fullName,
         is_active: true,
-        last_login_at: new Date().toISOString(), // Track first login
+        last_login_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
       
@@ -228,8 +245,11 @@ export default function ConfirmInvitation() {
         .eq('id', inviteData.userId)
       
       if (updateError) {
+        console.error('❌ Database update error:', updateError)
         throw updateError
       }
+      
+      console.log('✅ User record updated')
       
       // Log activation
       await supabase.from('auth_logs').insert({
@@ -237,20 +257,24 @@ export default function ConfirmInvitation() {
         email: inviteData.email,
         action: 'ACCOUNT_ACTIVATED',
         role: inviteData.role,
-        details: { activated_via: 'email_invitation' }
+        details: { 
+          activated_via: 'email_invitation',
+          full_name: fullName
+        }
       })
       
-      setMessage('Akun berhasil diaktifkan! Redirecting...')
+      console.log('✅ Activation logged')
+      
+      setMessage('✅ Akun berhasil diaktifkan! Redirecting...')
       
       // Redirect to dashboard
       setTimeout(() => {
         router.push('/dashboard')
-      }, 2000)
+      }, 1500)
       
     } catch (error: any) {
-      console.error('Setup account error:', error)
-      alert(error.message || 'Gagal mengaktifkan akun')
-    } finally {
+      console.error('❌ Setup account error:', error)
+      alert(error.message || 'Gagal mengaktifkan akun. Silakan coba lagi.')
       setSettingUp(false)
     }
   }
