@@ -57,7 +57,7 @@ export default async function handler(
     // Check if current user is superadmin
     const { data: currentUser, error: currentUserError } = await supabaseAdmin
       .from('users')
-      .select('role, is_active')
+      .select('id, role, is_active, full_name, email')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -103,8 +103,28 @@ export default async function handler(
           email,
           action: 'USER_REACTIVATED',
           role,
-          details: { reactivated_by: user.id },
+          details: { 
+            reactivated_by: currentUser.email,
+            reactivated_by_id: currentUser.id
+          },
           ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+          user_agent: req.headers['user-agent']
+        })
+
+        // Also log to audit_logs
+        await supabaseAdmin.from('audit_logs').insert({
+          user_id: currentUser.id,
+          admin_role: currentUser.role,
+          admin_name: currentUser.full_name || currentUser.email,
+          action: 'ACTIVATE',
+          resource_type: 'USER',
+          resource_id: existingUser.id,
+          details: {
+            user_email: email,
+            role,
+            action_type: 'reactivate'
+          },
+          ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
           user_agent: req.headers['user-agent']
         })
 
@@ -253,11 +273,30 @@ export default async function handler(
       action: 'INVITE_SENT',
       role,
       details: {
-        invited_by: user.email,
+        invited_by: currentUser.email,
+        invited_by_id: currentUser.id,
         full_name: fullName,
         method: inviteMethod
       },
       ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      user_agent: req.headers['user-agent']
+    })
+
+    // Also log to audit_logs
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: currentUser.id,
+      admin_role: currentUser.role,
+      admin_name: currentUser.full_name || currentUser.email,
+      action: 'CREATE',
+      resource_type: 'USER',
+      resource_id: newUser.id,
+      details: {
+        invited_email: email,
+        invited_role: role,
+        invited_name: fullName,
+        method: inviteMethod
+      },
+      ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
       user_agent: req.headers['user-agent']
     })
 

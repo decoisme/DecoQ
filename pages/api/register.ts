@@ -26,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   let userRole = 'admin'
   let userName = 'Admin'
+  let userId: string | null = null
+  let userEmail = ''
   let isAuthenticated = false
 
   // Try Bearer token first (new auth system)
@@ -38,13 +40,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Get user role from users table
         const { data: userData } = await supabaseAdmin
           .from('users')
-          .select('role, full_name, is_active')
+          .select('id, role, full_name, email, is_active')
           .eq('auth_user_id', user.id)
           .single()
 
         if (userData && userData.is_active) {
+          userId = userData.id
           userRole = userData.role
           userName = userData.full_name || user.email || 'Admin'
+          userEmail = userData.email
           isAuthenticated = true
         }
       }
@@ -119,6 +123,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single()
 
     if (error) throw error
+
+    // Log QRIS registration to audit logs
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: userId,
+      admin_role: userRole,
+      admin_name: userName,
+      action: 'CREATE',
+      resource_type: 'QRIS',
+      resource_id: data.id,
+      details: {
+        merchant_name: merchantName,
+        merchant_id: merchantId,
+        category: category || 'Umum',
+        registered_by: registeredBy || userName,
+        hash: hash.substring(0, 16) + '...',
+        user_email: userEmail
+      },
+      ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+      user_agent: req.headers['user-agent']
+    })
 
     return res.status(201).json({
       success: true,

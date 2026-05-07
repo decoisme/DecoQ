@@ -463,6 +463,11 @@ export default function DashboardNew() {
               >
                 <RegisterQRISTab 
                   sessionToken={sessionToken}
+                  currentUser={{
+                    email: adminEmail,
+                    full_name: adminName,
+                    role: adminRole!
+                  }}
                   onSuccess={() => {
                     // Refresh stats and list after successful registration
                     fetchStats();

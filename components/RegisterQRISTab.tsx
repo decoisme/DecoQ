@@ -20,14 +20,19 @@ const CATEGORIES = [
 interface RegisterQRISTabProps {
   sessionToken: string;
   onSuccess?: () => void;
+  currentUser?: {
+    email: string;
+    full_name: string | null;
+    role: string;
+  };
 }
 
-export default function RegisterQRISTab({ sessionToken, onSuccess }: RegisterQRISTabProps) {
+export default function RegisterQRISTab({ sessionToken, onSuccess, currentUser }: RegisterQRISTabProps) {
   const [form, setForm] = useState({
     merchantName: "",
     merchantId: "",
     category: "Umum",
-    registeredBy: "",
+    registeredBy: currentUser?.full_name || currentUser?.email || "",
     notes: "",
     rawQRIS: "",
   });
@@ -70,7 +75,7 @@ export default function RegisterQRISTab({ sessionToken, onSuccess }: RegisterQRI
           merchantName: "",
           merchantId: "",
           category: "Umum",
-          registeredBy: "",
+          registeredBy: currentUser?.full_name || currentUser?.email || "",
           notes: "",
           rawQRIS: "",
         });

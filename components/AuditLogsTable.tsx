@@ -12,6 +12,7 @@ import {
 
 type AuditLog = {
   id: string
+  user_id: string | null
   admin_role: string
   admin_name: string
   action: string
@@ -20,6 +21,11 @@ type AuditLog = {
   details: any
   created_at: string
   ip_address: string | null
+  // Joined user data
+  user?: {
+    email: string
+    full_name: string | null
+  }
 }
 
 type Props = {
@@ -39,6 +45,7 @@ export default function AuditLogsTable({ sessionToken }: Props) {
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState<string>('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [resourceFilter, setResourceFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [exporting, setExporting] = useState(false)
@@ -50,7 +57,8 @@ export default function AuditLogsTable({ sessionToken }: Props) {
         page: page.toString(),
         limit: '20',
         ...(actionFilter !== 'all' && { action: actionFilter }),
-        ...(roleFilter !== 'all' && { adminRole: roleFilter })
+        ...(roleFilter !== 'all' && { adminRole: roleFilter }),
+        ...(resourceFilter !== 'all' && { resourceType: resourceFilter })
       })
 
       const res = await fetch(`/api/audit-logs?${params}`, {
@@ -70,7 +78,7 @@ export default function AuditLogsTable({ sessionToken }: Props) {
 
   useEffect(() => {
     fetchLogs()
-  }, [page, actionFilter, roleFilter])
+  }, [page, actionFilter, roleFilter, resourceFilter])
 
   const handleExport = async () => {
     setExporting(true)
@@ -143,7 +151,10 @@ export default function AuditLogsTable({ sessionToken }: Props) {
           <select
             className="input-glass"
             value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+            onChange={(e) => {
+              setActionFilter(e.target.value)
+              setPage(1) // Reset to first page
+            }}
             style={{ cursor: 'pointer' }}
           >
             <option value="all">Semua Action</option>
@@ -158,12 +169,30 @@ export default function AuditLogsTable({ sessionToken }: Props) {
           <select
             className="input-glass"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => {
+              setRoleFilter(e.target.value)
+              setPage(1)
+            }}
             style={{ cursor: 'pointer' }}
           >
             <option value="all">Semua Role</option>
             <option value="admin">Admin</option>
             <option value="superadmin">Superadmin</option>
+          </select>
+
+          {/* Resource Type Filter */}
+          <select
+            className="input-glass"
+            value={resourceFilter}
+            onChange={(e) => {
+              setResourceFilter(e.target.value)
+              setPage(1)
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <option value="all">Semua Resource</option>
+            <option value="QRIS">QRIS</option>
+            <option value="USER">USER</option>
           </select>
         </div>
       </div>
@@ -220,7 +249,13 @@ export default function AuditLogsTable({ sessionToken }: Props) {
                             </div>
                             <div style={{ 
                               color: 'rgba(255,255,255,0.4)', 
-                              fontSize: '0.7rem',
+                              fontSize: '0.7rem'
+                            }}>
+                              {log.user?.email || log.details?.user_email || 'N/A'}
+                            </div>
+                            <div style={{ 
+                              color: 'rgba(255,255,255,0.3)', 
+                              fontSize: '0.65rem',
                               textTransform: 'capitalize'
                             }}>
                               {log.admin_role}

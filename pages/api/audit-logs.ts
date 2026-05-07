@@ -72,9 +72,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const limitNum = parseInt(limit as string)
       const offset = (pageNum - 1) * limitNum
 
+      // Query with left join to users table to get email
       let query = supabaseAdmin
         .from('audit_logs')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          user:users!audit_logs_user_id_fkey(email, full_name)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false })
 
       // Filters
@@ -123,6 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     try {
       const { 
+        user_id,
         admin_role,
         admin_name,
         action,
@@ -142,6 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { data, error } = await supabaseAdmin
         .from('audit_logs')
         .insert({
+          user_id: user_id || null,
           admin_role,
           admin_name,
           action,
@@ -171,6 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 // Helper function to create audit log (for use in other APIs)
 export async function createAuditLog(params: {
+  userId?: string
   adminRole: string
   adminName: string
   action: string
@@ -182,6 +189,7 @@ export async function createAuditLog(params: {
 }) {
   try {
     await supabaseAdmin.from('audit_logs').insert({
+      user_id: params.userId || null,
       admin_role: params.adminRole,
       admin_name: params.adminName,
       action: params.action,

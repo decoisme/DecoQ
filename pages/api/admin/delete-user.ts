@@ -43,7 +43,7 @@ export default async function handler(
     // Check if current user is superadmin
     const { data: currentUser, error: currentUserError } = await supabaseAdmin
       .from('users')
-      .select('id, role, is_active')
+      .select('id, role, is_active, full_name, email')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -100,12 +100,30 @@ export default async function handler(
       action: 'USER_DELETED',
       role: userToDelete.role,
       details: {
-        deleted_by: user.email,
+        deleted_by: currentUser.email,
+        deleted_by_id: currentUser.id,
         deleted_user_id: userId,
         deleted_user_email: userToDelete.email,
         deleted_user_name: userToDelete.full_name
       },
       ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      user_agent: req.headers['user-agent']
+    })
+
+    // Also log to audit_logs
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: currentUser.id,
+      admin_role: currentUser.role,
+      admin_name: currentUser.full_name || currentUser.email,
+      action: 'DELETE',
+      resource_type: 'USER',
+      resource_id: userId,
+      details: {
+        deleted_email: userToDelete.email,
+        deleted_name: userToDelete.full_name,
+        deleted_role: userToDelete.role
+      },
+      ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
       user_agent: req.headers['user-agent']
     })
 
