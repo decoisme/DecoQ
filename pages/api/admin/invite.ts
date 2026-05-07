@@ -116,22 +116,34 @@ export default async function handler(
       .single()
 
     // Create user record first (before sending invite)
+    // Note: status column might not exist yet, so we'll add it conditionally
+    const insertData: any = {
+      email,
+      role,
+      full_name: fullName || null,
+      invited_by: inviter?.id || null,
+      is_active: false, // Will be activated when they accept invite
+    }
+    
+    // Try to add status if column exists
+    try {
+      insertData.status = 'pending'
+    } catch (e) {
+      // Column doesn't exist yet, skip it
+    }
+
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
-      .insert({
-        email,
-        role,
-        full_name: fullName || null,
-        invited_by: inviter?.id || null,
-        is_active: false, // Will be activated when they accept invite
-        status: 'pending' // New: pending status
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (insertError) {
       console.error('Insert error:', insertError)
-      return res.status(500).json({ error: 'Gagal membuat user record' })
+      return res.status(500).json({ 
+        error: 'Gagal membuat user record',
+        details: insertError.message 
+      })
     }
 
     // Generate secure invitation token

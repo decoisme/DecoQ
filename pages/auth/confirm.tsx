@@ -67,8 +67,9 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Check if already active
-      if (user.status === 'active' || user.is_active) {
+      // Check if already active (check both status and is_active for backward compatibility)
+      const isAlreadyActive = user.status === 'active' || user.is_active
+      if (isAlreadyActive) {
         console.log('✅ User already active')
         setStatus('error')
         setMessage('Akun sudah aktif. Silakan login.')
@@ -137,17 +138,25 @@ export default function ConfirmInvitation() {
       }
       
       // Update user record
+      const updateData: any = {
+        auth_user_id: authData.user.id,
+        full_name: fullName,
+        is_active: true,
+        invitation_token: null, // Clear token after use
+        invitation_expires_at: null,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Add status if column exists
+      try {
+        updateData.status = 'active'
+      } catch (e) {
+        // Column doesn't exist, skip it
+      }
+      
       const { error: updateError } = await supabase
         .from('users')
-        .update({
-          auth_user_id: authData.user.id,
-          full_name: fullName,
-          is_active: true,
-          status: 'active', // Change from pending to active
-          invitation_token: null, // Clear token after use
-          invitation_expires_at: null,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', inviteData.userId)
       
       if (updateError) {

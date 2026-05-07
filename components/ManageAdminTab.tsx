@@ -439,9 +439,13 @@ export default function ManageAdminTab({ sessionToken }: Props) {
                         >
                           ⏳ Pending
                         </span>
+                      ) : user.status === 'inactive' || !user.is_active ? (
+                        <span className="tag tag-danger" style={{ fontSize: '0.75rem' }}>
+                          ○ Inactive
+                        </span>
                       ) : (
-                        <span className={user.is_active ? 'tag tag-success' : 'tag tag-danger'} style={{ fontSize: '0.75rem' }}>
-                          {user.is_active ? '● Active' : '○ Inactive'}
+                        <span className="tag tag-success" style={{ fontSize: '0.75rem' }}>
+                          ● Active
                         </span>
                       )}
                     </td>
