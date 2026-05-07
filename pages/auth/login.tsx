@@ -341,6 +341,26 @@ export default function Login() {
                 </>
               )}
             </motion.button>
+
+            {/* Forgot Password Link */}
+            <Link href="/auth/forgot-password">
+              <div style={{
+                textAlign: 'center',
+                marginTop: '0.5rem'
+              }}>
+                <span style={{
+                  color: 'rgba(255,249,133,0.7)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#fff985'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,249,133,0.7)'}
+                >
+                  Lupa password?
+                </span>
+              </div>
+            </Link>
           </form>
 
           <Link
