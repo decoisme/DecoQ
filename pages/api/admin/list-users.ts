@@ -52,8 +52,7 @@ export default async function handler(
     // Get query params
     const { role, is_active, search } = req.query
 
-    // Build query - always try to get all columns
-    // If optional columns don't exist, they'll be null
+    // Build query - simple query without foreign key first
     let query = supabaseAdmin
       .from('users')
       .select(`
@@ -63,11 +62,9 @@ export default async function handler(
         full_name,
         is_active,
         status,
-        invitation_expires_at,
         last_login_at,
         invited_at,
-        created_at,
-        invited_by:users!users_invited_by_fkey(email, full_name)
+        created_at
       `)
       .order('created_at', { ascending: false })
 
