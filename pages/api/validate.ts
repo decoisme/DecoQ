@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Cari di database
     const { data, error } = await supabase
-      .from('qris_registry')
+      .from('qris_database')
       .select('*')
       .eq('hash', hash)
       .eq('is_active', true)
