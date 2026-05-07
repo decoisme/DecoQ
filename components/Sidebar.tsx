@@ -33,9 +33,10 @@ export default function Sidebar({ activeTab, onTabChange, adminRole, adminName, 
     { id: 'audit', label: 'Audit Logs', icon: Shield },
   ]
 
-  // Add Manage Admin for superadmin only
+  // Add Manage Admin and Password Reset for superadmin only
   if (adminRole === 'superadmin') {
     menuItems.push({ id: 'manage-admin', label: 'Manage Admin', icon: Crown })
+    menuItems.push({ id: 'password-reset', label: 'Password Reset', icon: Shield })
   }
 
   const SidebarContent = () => (

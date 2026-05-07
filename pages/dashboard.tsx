@@ -20,6 +20,7 @@ import RestrictionModal from "../components/RestrictionModal";
 import ManageAdminTab from "../components/ManageAdminTab";
 import RegisterQRISTab from "../components/RegisterQRISTab";
 import EditQRISModal from "../components/EditQRISModal";
+import PasswordResetRequestsTab from "../components/PasswordResetRequestsTab";
 
 type AdminRole = 'admin' | 'superadmin'
 
@@ -650,6 +651,18 @@ export default function DashboardNew() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 <ManageAdminTab sessionToken={sessionToken} />
+              </motion.div>
+            )}
+
+            {/* Password Reset Requests Tab (Superadmin Only) */}
+            {activeTab === 'password-reset' && adminRole === 'superadmin' && (
+              <motion.div
+                key="password-reset"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <PasswordResetRequestsTab sessionToken={sessionToken} />
               </motion.div>
             )}
           </AnimatePresence>

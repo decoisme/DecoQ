@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS password_reset_requests (
   email TEXT NOT NULL,
   full_name TEXT NOT NULL,
   reason TEXT,
-  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected', 'completed'
   reset_token TEXT UNIQUE,
   reset_token_expires_at TIMESTAMPTZ,
   reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -67,7 +67,7 @@ CREATE POLICY "Anyone can create password reset request"
 
 -- Comments
 COMMENT ON TABLE password_reset_requests IS 'Stores password reset requests from admins that need superadmin approval';
-COMMENT ON COLUMN password_reset_requests.status IS 'Request status: pending, approved, rejected';
+COMMENT ON COLUMN password_reset_requests.status IS 'Request status: pending, approved, rejected, completed';
 COMMENT ON COLUMN password_reset_requests.reset_token IS 'Secure token for password reset (only set when approved)';
 COMMENT ON COLUMN password_reset_requests.reviewed_by IS 'Superadmin who reviewed the request';
 
