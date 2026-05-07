@@ -129,141 +129,41 @@ export default function ConfirmInvitation() {
     try {
       console.log('🔐 Setting up account for:', inviteData.email)
       
-      // Check if user already has auth account
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('auth_user_id')
-        .eq('id', inviteData.userId)
-        .single()
-      
-      let authUserId = existingUser?.auth_user_id
-      
-      if (!authUserId) {
-        console.error('❌ No auth_user_id found - this should not happen for invited users')
-        throw new Error('Auth account tidak ditemukan. Silakan minta undangan baru.')
-      }
-      
-      console.log('✅ Auth account exists:', authUserId)
-      console.log('📝 Setting password via signInWithPassword (OTP flow)...')
-      
-      // For invited users, we need to use a different approach
-      // The user was created via inviteUserByEmail, which sends them a magic link
-      // When they click the link, they're already authenticated
-      // We just need to update their password
-      
-      // First, try to sign in with the email (this will fail but that's ok)
-      // Then use updateUser to set the password
-      try {
-        // Try to get current session (from email link)
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session && session.user.email === inviteData.email) {
-          console.log('✅ User already has session from email link')
-          
-          // Update password for the authenticated user
-          const { error: updateError } = await supabase.auth.updateUser({
-            password: password,
-            data: {
-              full_name: fullName
-            }
-          })
-          
-          if (updateError) {
-            throw updateError
-          }
-          
-          console.log('✅ Password updated successfully')
-        } else {
-          console.log('⚠️ No session found, trying alternative method...')
-          
-          // Alternative: Use signUp which will update the invited user
-          const { data: authData, error: signUpError } = await supabase.auth.signUp({
-            email: inviteData.email,
-            password: password,
-            options: {
-              data: {
-                full_name: fullName,
-                role: inviteData.role
-              }
-            }
-          })
-          
-          if (signUpError) {
-            // If error says user already exists, try to sign in
-            if (signUpError.message.includes('already') || signUpError.message.includes('exists')) {
-              console.log('⚠️ User exists, trying signIn...')
-              
-              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                email: inviteData.email,
-                password: password
-              })
-              
-              if (signInError) {
-                throw new Error('Gagal login. Password mungkin sudah di-set sebelumnya.')
-              }
-              
-              authUserId = signInData.user?.id
-            } else {
-              throw signUpError
-            }
-          } else {
-            authUserId = authData.user?.id
-            
-            // Sign in after signup
-            await supabase.auth.signInWithPassword({
-              email: inviteData.email,
-              password: password
-            })
-          }
-        }
-      } catch (authError: any) {
-        console.error('❌ Auth error:', authError)
-        throw new Error(authError.message || 'Gagal mengatur password')
-      }
-      
-      // Update user record in database
-      const updateData: any = {
-        auth_user_id: authUserId,
-        full_name: fullName,
-        is_active: true,
-        last_login_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      // Add optional fields if columns exist
-      try {
-        updateData.status = 'active'
-        updateData.invitation_token = null
-        updateData.invitation_expires_at = null
-      } catch (e) {
-        // Columns don't exist, skip them
-      }
-      
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', inviteData.userId)
-      
-      if (updateError) {
-        console.error('❌ Database update error:', updateError)
-        throw updateError
-      }
-      
-      console.log('✅ User record updated')
-      
-      // Log activation
-      await supabase.from('auth_logs').insert({
-        user_id: inviteData.userId,
-        email: inviteData.email,
-        action: 'ACCOUNT_ACTIVATED',
-        role: inviteData.role,
-        details: { 
-          activated_via: 'email_invitation',
-          full_name: fullName
-        }
+      // Use API endpoint to set password via Admin API
+      // This is more reliable than client-side methods
+      const response = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: token,
+          password: password,
+          fullName: fullName
+        })
       })
       
-      console.log('✅ Activation logged')
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengatur password')
+      }
+      
+      console.log('✅ Password set successfully via API')
+      
+      // Now sign in with the new password
+      console.log('🔐 Signing in with new password...')
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: inviteData.email,
+        password: password
+      })
+      
+      if (signInError) {
+        console.error('❌ Sign in error:', signInError)
+        throw new Error('Password berhasil diatur, tapi gagal login otomatis. Silakan login manual.')
+      }
+      
+      console.log('✅ Sign in successful')
       
       setMessage('✅ Akun berhasil diaktifkan! Redirecting...')
       
@@ -274,8 +174,17 @@ export default function ConfirmInvitation() {
       
     } catch (error: any) {
       console.error('❌ Setup account error:', error)
-      alert(error.message || 'Gagal mengaktifkan akun. Silakan coba lagi.')
-      setSettingUp(false)
+      
+      // If password was set but auto-login failed, redirect to login
+      if (error.message.includes('Password berhasil diatur')) {
+        alert(error.message)
+        setTimeout(() => {
+          router.push(`/auth/login?email=${encodeURIComponent(inviteData.email)}`)
+        }, 2000)
+      } else {
+        alert(error.message || 'Gagal mengaktifkan akun. Silakan coba lagi.')
+        setSettingUp(false)
+      }
     }
   }
 
