@@ -183,13 +183,37 @@ export default function DashboardNew() {
     try {
       console.log('🚪 Logging out...')
       
-      // Sign out from Supabase
+      // Sign out from Supabase (this should clear the session)
       const { error } = await supabase.auth.signOut()
       
       if (error) {
         console.error('❌ Logout error:', error)
       } else {
         console.log('✅ Logout successful')
+      }
+      
+      // Clear ALL Supabase-related items from localStorage
+      if (typeof window !== 'undefined') {
+        const keysToRemove: string[] = []
+        
+        // Find all keys that start with 'sb-'
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('sb-')) {
+            keysToRemove.push(key)
+          }
+        }
+        
+        // Remove all Supabase keys
+        keysToRemove.forEach(key => {
+          console.log('🗑️ Removing:', key)
+          localStorage.removeItem(key)
+        })
+        
+        // Also clear specific auth token
+        localStorage.removeItem('sb-auth-token')
+        
+        console.log('✅ LocalStorage cleared')
       }
       
       // Clear local state
@@ -199,12 +223,30 @@ export default function DashboardNew() {
       setAdminEmail('')
       setSessionToken('')
       
-      // Redirect to login
-      router.push('/auth/login')
+      console.log('✅ Local state cleared')
+      
+      // Small delay to ensure everything is cleared
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Redirect to login with cache buster
+      router.push('/auth/login?t=' + Date.now())
     } catch (err) {
       console.error('❌ Logout exception:', err)
-      // Force redirect even if error
-      router.push('/auth/login')
+      
+      // Force clear localStorage even on error
+      if (typeof window !== 'undefined') {
+        const keysToRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('sb-')) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      }
+      
+      // Force redirect
+      router.push('/auth/login?t=' + Date.now())
     }
   };
 

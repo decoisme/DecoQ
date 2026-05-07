@@ -15,8 +15,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
-  // Pre-fill email if provided in URL
+  // Pre-fill email if provided in URL and check for existing session
   useEffect(() => {
+    // Check if there's an existing session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        console.log('⚠️ Existing session found on login page, clearing...')
+        // If there's a session, user shouldn't be on login page
+        // Clear it to allow fresh login
+        await supabase.auth.signOut()
+        
+        // Clear localStorage
+        if (typeof window !== 'undefined') {
+          const keysToRemove: string[] = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && key.startsWith('sb-')) {
+              keysToRemove.push(key)
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key))
+        }
+      }
+    }
+    
+    checkSession()
+    
     if (emailParam && typeof emailParam === 'string') {
       setEmail(emailParam)
     }
@@ -31,13 +57,32 @@ export default function Login() {
     setError('')
 
     try {
+      console.log('🔐 Attempting login for:', email)
+      
+      // First, ensure no existing session
+      await supabase.auth.signOut()
+      
+      // Small delay to ensure signOut completes
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Now attempt fresh login
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
       if (signInError) {
-        setError(signInError.message)
+        console.error('❌ Sign in error:', signInError)
+        
+        // Provide more helpful error messages
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Email atau password salah. Silakan coba lagi.')
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('Email belum dikonfirmasi. Cek inbox Anda.')
+        } else {
+          setError(signInError.message)
+        }
+        
         setLoading(false)
         return
       }
