@@ -2,7 +2,7 @@ import Head from "next/head";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/router";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 import {
   Settings,
   AlertTriangle,
@@ -47,10 +47,6 @@ type DashboardStats = {
 
 export default function DashboardNew() {
   const router = useRouter();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
 
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [loading, setLoading] = useState(true);
@@ -184,8 +180,32 @@ export default function DashboardNew() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth/login');
+    try {
+      console.log('🚪 Logging out...')
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('❌ Logout error:', error)
+      } else {
+        console.log('✅ Logout successful')
+      }
+      
+      // Clear local state
+      setAuthed(false)
+      setAdminRole(null)
+      setAdminName('')
+      setAdminEmail('')
+      setSessionToken('')
+      
+      // Redirect to login
+      router.push('/auth/login')
+    } catch (err) {
+      console.error('❌ Logout exception:', err)
+      // Force redirect even if error
+      router.push('/auth/login')
+    }
   };
 
   const handleDeactivate = async (id: string) => {

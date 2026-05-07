@@ -11,7 +11,15 @@ if (!supabaseAnonKey) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Client-side Supabase client with proper session persistence
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined
+  }
+})
 
 // Admin client dengan service role (untuk operasi tulis admin)
 export const supabaseAdmin = createClient(
@@ -24,3 +32,4 @@ export const supabaseAdmin = createClient(
     }
   }
 )
+

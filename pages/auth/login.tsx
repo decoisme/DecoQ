@@ -1,19 +1,14 @@
 import Head from 'next/head'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, AlertTriangle, LogIn } from 'lucide-react'
 import { useRouter } from 'next/router'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
 
 export default function Login() {
   const router = useRouter()
-  const { email: emailParam } = router.query // Get email from URL query
-  
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
+  const { email: emailParam, error: errorParam } = router.query
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,11 +16,14 @@ export default function Login() {
   const [error, setError] = useState('')
   
   // Pre-fill email if provided in URL
-  useState(() => {
+  useEffect(() => {
     if (emailParam && typeof emailParam === 'string') {
       setEmail(emailParam)
     }
-  })
+    if (errorParam && typeof errorParam === 'string') {
+      setError(`Error: ${errorParam}`)
+    }
+  }, [emailParam, errorParam])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
