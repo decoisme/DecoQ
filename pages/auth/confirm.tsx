@@ -35,13 +35,18 @@ export default function ConfirmInvitation() {
 
   const verifyToken = async () => {
     try {
+      console.log('🔍 Verifying token:', token)
+      
       // Decode token
       const decoded = JSON.parse(
         Buffer.from(token as string, 'base64url').toString()
       )
       
+      console.log('📦 Decoded token:', { email: decoded.email, role: decoded.role, exp: new Date(decoded.exp) })
+      
       // Check expiration
       if (decoded.exp < Date.now()) {
+        console.log('⏰ Token expired')
         setStatus('expired')
         setMessage('Link undangan sudah kadaluarsa. Silakan minta undangan baru.')
         return
@@ -55,13 +60,17 @@ export default function ConfirmInvitation() {
         .eq('email', decoded.email)
         .single()
       
+      console.log('👤 User query result:', { user, error })
+      
       if (error || !user) {
+        console.log('❌ User not found or error:', error)
         setStatus('error')
         setMessage('Undangan tidak valid atau sudah digunakan.')
         return
       }
       
       if (user.is_active) {
+        console.log('✅ User already active')
         setStatus('error')
         setMessage('Akun sudah aktif. Silakan login.')
         setTimeout(() => router.push('/auth/login'), 2000)
@@ -69,6 +78,7 @@ export default function ConfirmInvitation() {
       }
       
       // Valid invitation
+      console.log('✅ Token valid')
       setInviteData({
         email: decoded.email,
         role: decoded.role,
@@ -79,9 +89,9 @@ export default function ConfirmInvitation() {
       setMessage('Undangan valid! Silakan set password Anda.')
       
     } catch (error) {
-      console.error('Token verification error:', error)
+      console.error('❌ Token verification error:', error)
       setStatus('error')
-      setMessage('Token tidak valid.')
+      setMessage('Token tidak valid atau format salah.')
     }
   }
 

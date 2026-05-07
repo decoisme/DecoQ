@@ -143,15 +143,21 @@ export default async function handler(
       // Use Nodemailer for custom email
       console.log('📧 Sending invite via Nodemailer...')
       
-      // Generate confirmation token
-      const confirmationToken = Buffer.from(JSON.stringify({
+      // Generate confirmation token with crypto for better security
+      const crypto = require('crypto')
+      const tokenData = {
         email,
         role,
         userId: newUser.id,
-        exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
-      })).toString('base64url')
+        exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+        nonce: crypto.randomBytes(16).toString('hex') // Add randomness
+      }
+      
+      const confirmationToken = Buffer.from(JSON.stringify(tokenData)).toString('base64url')
       
       const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${confirmationToken}`
+      
+      console.log('🔗 Confirmation URL:', confirmationUrl)
       
       const emailResult = await sendInvitationEmail({
         to: email,
