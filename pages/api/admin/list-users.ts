@@ -52,7 +52,8 @@ export default async function handler(
     // Get query params
     const { role, is_active, search } = req.query
 
-    // Build query
+    // Build query - always try to get all columns
+    // If optional columns don't exist, they'll be null
     let query = supabaseAdmin
       .from('users')
       .select(`
@@ -63,8 +64,8 @@ export default async function handler(
         is_active,
         status,
         invitation_expires_at,
-        invited_at,
         last_login_at,
+        invited_at,
         created_at,
         invited_by:users!users_invited_by_fkey(email, full_name)
       `)
@@ -86,9 +87,15 @@ export default async function handler(
     const { data: users, error: usersError } = await query
 
     if (usersError) {
-      console.error('List users error:', usersError)
-      return res.status(500).json({ error: 'Gagal mengambil daftar user' })
+      console.error('❌ List users error:', usersError)
+      console.error('Error details:', JSON.stringify(usersError, null, 2))
+      return res.status(500).json({ 
+        error: 'Gagal mengambil daftar user',
+        details: usersError.message 
+      })
     }
+    
+    console.log('✅ Users fetched:', users?.length || 0)
 
     // Get stats
     const { data: stats, error: statsError } = await supabaseAdmin
