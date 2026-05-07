@@ -232,11 +232,21 @@ export default function PasswordResetRequestsTab({ sessionToken }: Props) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="glass"
                 style={{
                   padding: '1.5rem',
                   borderRadius: '12px',
-                  border: '1px solid rgba(255,249,133,0.2)'
+                  background: 'rgba(255,255,255,0.03)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,249,133,0.15)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.borderColor = 'rgba(255,249,133,0.25)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.borderColor = 'rgba(255,249,133,0.15)'
                 }}
               >
                 <div style={{ 
