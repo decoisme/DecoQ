@@ -115,7 +115,49 @@ export default async function handler(
       .eq('auth_user_id', user.id)
       .single()
 
-    // Create user record first (before sending invite)
+    // Send invite email via Supabase Auth OR Nodemailer
+    const useNodemailer = process.env.USE_NODEMAILER === 'true'
+    
+    let inviteSuccess = false
+    let inviteMethod = 'supabase'
+    let authUserId = null
+    
+    // Always try Supabase Auth first (this creates the auth user)
+    console.log('📧 Sending invite via Supabase Auth...')
+    
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email,
+      {
+        data: {
+          role,
+          full_name: fullName || null,
+          invited_by: user.email
+        },
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+      }
+    )
+
+    if (inviteError) {
+      console.error('Supabase invite error:', inviteError)
+      return res.status(500).json({ 
+        error: 'Gagal mengirim email invite',
+        details: inviteError.message
+      })
+    }
+
+    // Get the auth user ID from invite
+    authUserId = inviteData.user?.id
+    
+    if (!authUserId) {
+      return res.status(500).json({ 
+        error: 'Gagal mendapatkan auth user ID'
+      })
+    }
+    
+    inviteSuccess = true
+    console.log('✅ Invite sent via Supabase Auth, auth_user_id:', authUserId)
+    
+    // Now create user record with auth_user_id
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -123,25 +165,33 @@ export default async function handler(
         role,
         full_name: fullName || null,
         invited_by: inviter?.id || null,
-        is_active: false, // Will be activated when they accept invite
+        is_active: false,
+        auth_user_id: authUserId // Link to auth user
       })
       .select()
       .single()
 
     if (insertError) {
       console.error('Insert error:', insertError)
+      
+      // Rollback: delete auth user
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+      } catch (e) {
+        console.error('Failed to rollback auth user:', e)
+      }
+      
       return res.status(500).json({ 
         error: 'Gagal membuat user record',
         details: insertError.message 
       })
     }
-
-    // Generate secure invitation token
+    
+    // Try to store token if columns exist (optional)
     const crypto = require('crypto')
     const invitationToken = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
-    // Store token in database (only if columns exist)
     try {
       await supabaseAdmin
         .from('users')
@@ -150,23 +200,17 @@ export default async function handler(
           invitation_expires_at: expiresAt.toISOString()
         })
         .eq('id', newUser.id)
+      
+      console.log('✅ Token stored')
     } catch (e) {
       console.log('⚠️ Token columns not exist yet, skipping token storage')
     }
-
-    // Send invite email via Supabase Auth OR Nodemailer
-    const useNodemailer = process.env.USE_NODEMAILER === 'true'
     
-    let inviteSuccess = false
-    let inviteMethod = 'supabase'
-    
+    // Optionally send custom email via Nodemailer
     if (useNodemailer && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-      // Use Nodemailer for custom email
-      console.log('📧 Sending invite via Nodemailer...')
+      console.log('📧 Also sending custom email via Nodemailer...')
       
       const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${invitationToken}`
-      
-      console.log('🔗 Confirmation URL:', confirmationUrl)
       
       const emailResult = await sendInvitationEmail({
         to: email,
@@ -177,54 +221,9 @@ export default async function handler(
       })
       
       if (emailResult.success) {
-        inviteSuccess = true
-        inviteMethod = 'nodemailer'
-        console.log('✅ Invite sent via Nodemailer')
-      } else {
-        console.error('❌ Nodemailer failed:', emailResult.error)
-        // Fallback to Supabase
+        inviteMethod = 'both'
+        console.log('✅ Custom email also sent via Nodemailer')
       }
-    }
-    
-    // Fallback to Supabase Auth if Nodemailer not configured or failed
-    if (!inviteSuccess) {
-      console.log('📧 Sending invite via Supabase Auth...')
-      
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-        email,
-        {
-          data: {
-            role,
-            full_name: fullName || null,
-            invited_by: user.email
-          },
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
-        }
-      )
-
-      if (inviteError) {
-        console.error('Invite error:', inviteError)
-        
-        // Rollback: delete user record
-        await supabaseAdmin.from('users').delete().eq('id', newUser.id)
-        
-        return res.status(500).json({ 
-          error: 'Gagal mengirim email invite',
-          details: inviteError.message
-        })
-      }
-
-      // Update user with auth_user_id if available
-      if (inviteData.user?.id) {
-        await supabaseAdmin
-          .from('users')
-          .update({ auth_user_id: inviteData.user.id })
-          .eq('id', newUser.id)
-      }
-      
-      inviteSuccess = true
-      inviteMethod = 'supabase'
-      console.log('✅ Invite sent via Supabase Auth')
     }
 
     // Log invite action
