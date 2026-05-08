@@ -38,7 +38,7 @@ export default function AuthCallback() {
             // Check if user exists in users table
             const { data: userData, error: userError } = await supabase
               .from('users')
-              .select('role, is_active, email')
+              .select('role, is_active, email, last_login_at')
               .eq('auth_user_id', session.user.id)
               .single()
 
@@ -50,7 +50,15 @@ export default function AuthCallback() {
               return
             }
 
-            // Activate user on first login (from invite)
+            // If this is first time (no last_login_at), redirect to confirm page to set password
+            if (!userData.last_login_at) {
+              console.log('First time login, redirecting to confirm page...')
+              // Pass session tokens to confirm page
+              router.push(`/auth/confirm?access_token=${accessToken}&refresh_token=${refreshToken}`)
+              return
+            }
+
+            // Activate user and update last login
             await supabase
               .from('users')
               .update({ 

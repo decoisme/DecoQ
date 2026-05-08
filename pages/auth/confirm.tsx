@@ -23,10 +23,84 @@ export default function ConfirmInvitation() {
   const [settingUp, setSettingUp] = useState(false)
 
   useEffect(() => {
+    // Check for access_token from query params (redirected from callback)
+    const { access_token, refresh_token } = router.query
+    
+    if (access_token && typeof access_token === 'string') {
+      console.log('✅ Using tokens from callback redirect')
+      verifySupabaseAuthInvite(access_token, refresh_token as string || null)
+      return
+    }
+    
+    // Check for Supabase Auth hash params (direct from email link - shouldn't happen now)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const hashAccessToken = hashParams.get('access_token')
+    const hashRefreshToken = hashParams.get('refresh_token')
+    const type = hashParams.get('type')
+    
+    if (hashAccessToken && type === 'invite') {
+      console.log('✅ Using Supabase Auth invite link from hash')
+      verifySupabaseAuthInvite(hashAccessToken, hashRefreshToken)
+      return
+    }
+    
+    // Otherwise use custom token from query param (old method)
     if (!token) return
     
     verifyToken()
-  }, [token])
+  }, [router.query, token])
+
+  const verifySupabaseAuthInvite = async (accessToken: string, refreshToken: string | null) => {
+    try {
+      console.log('🔐 Setting Supabase session from invite link...')
+      
+      // Set the session
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken || ''
+      })
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
+        setStatus('error')
+        setMessage('Link undangan tidak valid atau sudah kadaluarsa.')
+        return
+      }
+      
+      console.log('✅ Session set, user:', sessionData.user?.email)
+      
+      // Get user data from database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, role, full_name, is_active')
+        .eq('auth_user_id', sessionData.user?.id)
+        .single()
+      
+      if (userError || !userData) {
+        console.error('❌ User not found in database:', userError)
+        setStatus('error')
+        setMessage('User tidak ditemukan dalam sistem.')
+        return
+      }
+      
+      console.log('✅ User found:', userData.email)
+      
+      // Show setup form
+      setInviteData({
+        email: userData.email,
+        role: userData.role as 'admin' | 'superadmin',
+        userId: userData.id
+      })
+      setFullName(userData.full_name || '')
+      setStatus('success')
+      setMessage('Undangan valid! Silakan set password Anda.')
+      
+    } catch (error) {
+      console.error('❌ Supabase auth invite error:', error)
+      setStatus('error')
+      setMessage('Terjadi kesalahan saat memverifikasi undangan.')
+    }
+  }
 
   const verifyToken = async () => {
     try {
