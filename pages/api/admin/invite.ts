@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { sendInvitationEmail } from '../../../lib/email'
+import crypto from 'crypto'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,52 +144,34 @@ export default async function handler(
       .eq('auth_user_id', user.id)
       .single()
 
-    // Send invite email via Supabase Auth OR Nodemailer
-    const useNodemailer = process.env.USE_NODEMAILER === 'true'
+    // NEW APPROACH: Create auth user with temporary password, then send custom email
+    console.log('📧 Creating auth user with temporary password...')
     
-    let inviteSuccess = false
-    let inviteMethod = 'supabase'
-    let authUserId = null
+    // Generate temporary password (user will change this)
+    const tempPassword = crypto.randomBytes(16).toString('hex')
     
-    // Always try Supabase Auth first (this creates the auth user)
-    console.log('📧 Sending invite via Supabase Auth to:', email)
-    console.log('🔗 Redirect URL:', `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`)
-    
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    // Create auth user with temporary password
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      {
-        data: {
-          role,
-          full_name: fullName || null,
-          invited_by: user.email
-        },
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+      password: tempPassword,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        role,
+        full_name: fullName || null,
+        invited_by: user.email
       }
-    )
+    })
 
-    if (inviteError) {
-      console.error('❌ Supabase invite error:', inviteError)
-      console.error('Error details:', JSON.stringify(inviteError, null, 2))
+    if (authError) {
+      console.error('❌ Create auth user error:', authError)
       return res.status(500).json({ 
-        error: 'Gagal mengirim email invite',
-        details: inviteError.message
+        error: 'Gagal membuat auth user',
+        details: authError.message
       })
     }
 
-    console.log('✅ Supabase invite response:', inviteData)
-
-    // Get the auth user ID from invite
-    authUserId = inviteData.user?.id
-    
-    if (!authUserId) {
-      console.error('❌ No auth_user_id from invite response')
-      return res.status(500).json({ 
-        error: 'Gagal mendapatkan auth user ID'
-      })
-    }
-    
-    inviteSuccess = true
-    console.log('✅ Invite sent via Supabase Auth, auth_user_id:', authUserId)
+    console.log('✅ Auth user created:', authUser.user.id)
+    const authUserId = authUser.user.id
     
     // Now create user record with auth_user_id
     console.log('💾 Inserting user record to database...')
@@ -227,8 +210,7 @@ export default async function handler(
     
     console.log('✅ User record created:', newUser.id)
     
-    // Try to store token if columns exist (optional)
-    const crypto = require('crypto')
+    // Generate invitation token
     const invitationToken = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
@@ -237,7 +219,8 @@ export default async function handler(
         .from('users')
         .update({
           invitation_token: invitationToken,
-          invitation_expires_at: expiresAt.toISOString()
+          invitation_expires_at: expiresAt.toISOString(),
+          status: 'pending'
         })
         .eq('id', newUser.id)
       
@@ -246,24 +229,43 @@ export default async function handler(
       console.log('⚠️ Token columns not exist yet, skipping token storage')
     }
     
-    // Optionally send custom email via Nodemailer
-    if (useNodemailer && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-      console.log('📧 Also sending custom email via Nodemailer...')
-      
-      const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${invitationToken}`
-      
+    // ALWAYS send custom email via Nodemailer with our own link
+    console.log('📧 Sending custom invitation email via Nodemailer...')
+    
+    const confirmationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm?token=${invitationToken}`
+    
+    try {
       const emailResult = await sendInvitationEmail({
         to: email,
         inviteeName: fullName || email.split('@')[0],
-        inviterName: user.email || 'Admin',
+        inviterName: currentUser.full_name || currentUser.email || 'Admin',
         role,
         confirmationUrl
       })
       
-      if (emailResult.success) {
-        inviteMethod = 'both'
-        console.log('✅ Custom email also sent via Nodemailer')
+      if (!emailResult.success) {
+        console.error('❌ Failed to send email:', emailResult.error)
+        // Rollback: delete auth user and database record
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        await supabaseAdmin.from('users').delete().eq('id', newUser.id)
+        
+        return res.status(500).json({ 
+          error: 'Gagal mengirim email invitation',
+          details: emailResult.error
+        })
       }
+      
+      console.log('✅ Custom email sent successfully via Nodemailer')
+    } catch (emailError: any) {
+      console.error('❌ Email sending error:', emailError)
+      // Rollback
+      await supabaseAdmin.auth.admin.deleteUser(authUserId)
+      await supabaseAdmin.from('users').delete().eq('id', newUser.id)
+      
+      return res.status(500).json({ 
+        error: 'Gagal mengirim email invitation',
+        details: emailError.message
+      })
     }
 
     // Log invite action
@@ -275,8 +277,8 @@ export default async function handler(
       details: {
         invited_by: currentUser.email,
         invited_by_id: currentUser.id,
-        full_name: fullName,
-        method: inviteMethod
+        method: 'nodemailer_custom_link',
+        full_name: fullName
       },
       ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
       user_agent: req.headers['user-agent']
@@ -294,7 +296,7 @@ export default async function handler(
         invited_email: email,
         invited_role: role,
         invited_name: fullName,
-        method: inviteMethod
+        method: 'nodemailer_custom_link'
       },
       ip_address: req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
       user_agent: req.headers['user-agent']
@@ -302,8 +304,7 @@ export default async function handler(
 
     return res.status(200).json({
       success: true,
-      message: `Invite berhasil dikirim ke ${email}`,
-      method: inviteMethod,
+      message: `Invite berhasil dikirim ke ${email}. User akan menerima email dengan link aktivasi.`,
       user: {
         id: newUser.id,
         email: newUser.email,
