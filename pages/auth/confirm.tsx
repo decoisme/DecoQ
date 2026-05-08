@@ -170,63 +170,42 @@ export default function ConfirmInvitation() {
         return
       }
       
-      // Try to query user by invitation_token (if column exists)
-      let user: any = null
-      let error: any = null
-      
-      try {
-        const result = await supabase
-          .from('users')
-          .select('id, email, role, status, is_active, full_name, invitation_expires_at, auth_user_id')
-          .eq('invitation_token', token)
-          .single()
-        
-        user = result.data
-        error = result.error
-      } catch (e) {
-        console.log('⚠️ invitation_token column not exist, trying fallback...')
-        
-        // Fallback: Try to decode token as base64 (old method)
-        try {
-          const decoded = JSON.parse(Buffer.from(token, 'base64url').toString())
-          const result = await supabase
-            .from('users')
-            .select('id, email, role, status, is_active, full_name, auth_user_id')
-            .eq('email', decoded.email)
-            .single()
-          
-          user = result.data
-          error = result.error
-        } catch (decodeError) {
-          console.log('❌ Fallback also failed')
-        }
-      }
-      
-      console.log('👤 User query result:', { user, error })
-      
-      if (error || !user) {
-        console.log('❌ User not found or error:', error)
-        setStatus('error')
-        setMessage('Undangan tidak valid atau sudah digunakan.')
-        return
-      }
-      
-      // Check expiration (if column exists)
-      if (user.invitation_expires_at && new Date(user.invitation_expires_at) < new Date()) {
-        console.log('⏰ Token expired')
-        setStatus('expired')
-        setMessage('Link undangan sudah kadaluarsa. Silakan minta undangan baru.')
-        return
-      }
-      
-      // Always show setup form - let Supabase handle if email already exists
-      console.log('✅ Token valid, showing setup form')
-      setInviteData({
-        email: user.email,
-        role: user.role as 'admin' | 'superadmin',
-        userId: user.id
+      // Use API endpoint to verify token (bypasses RLS)
+      const response = await fetch('/api/auth/verify-invitation-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
       })
-      setFullName(user.full_name || '')
+
+      const data = await response.json()
+
+      if (!response.ok || !data.valid) {
+        console.error('❌ Token verification failed:', data.error)
+        setStatus('error')
+        setMessage(data.error || 'Token tidak valid atau sudah digunakan.')
+        return
+      }
+
+      console.log('✅ Token valid, user:', data.user.email)
+
+      // If already activated, redirect to dashboard
+      if (data.alreadyActivated) {
+        console.log('⚠️ User already activated, redirecting to login...')
+        setStatus('error')
+        setMessage('Akun sudah diaktifkan. Silakan login.')
+        setTimeout(() => router.push('/auth/login'), 2000)
+        return
+      }
+
+      // Show setup form
+      setInviteData({
+        email: data.user.email,
+        role: data.user.role as 'admin' | 'superadmin',
+        userId: data.user.id
+      })
+      setFullName(data.user.fullName || '')
       setStatus('success')
       setMessage('Undangan valid! Silakan set password Anda.')
       
