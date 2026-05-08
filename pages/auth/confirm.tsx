@@ -23,32 +23,90 @@ export default function ConfirmInvitation() {
   const [settingUp, setSettingUp] = useState(false)
 
   useEffect(() => {
-    // Check for access_token from query params (redirected from callback)
-    const { access_token, refresh_token } = router.query
-    
-    if (access_token && typeof access_token === 'string') {
-      console.log('✅ Using tokens from callback redirect')
-      verifySupabaseAuthInvite(access_token, refresh_token as string || null)
-      return
+    const initConfirmPage = async () => {
+      console.log('🔍 Confirm page loaded')
+      console.log('Query params:', router.query)
+      console.log('Hash:', window.location.hash)
+      
+      // Priority 1: Check for access_token from query params (redirected from callback)
+      const { access_token, refresh_token } = router.query
+      
+      if (access_token && typeof access_token === 'string') {
+        console.log('✅ Using tokens from callback redirect')
+        verifySupabaseAuthInvite(access_token, refresh_token as string || null)
+        return
+      }
+      
+      // Priority 2: Check for existing session (user might have clicked link again)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        console.log('✅ Found existing session:', session.user.email)
+        
+        // Get user data
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id, email, role, full_name, is_active, last_login_at')
+          .eq('auth_user_id', session.user.id)
+          .single()
+        
+        if (userData) {
+          console.log('✅ User found in database')
+          
+          // If already has last_login_at, redirect to dashboard
+          if (userData.last_login_at) {
+            console.log('User already activated, redirecting to dashboard...')
+            router.push('/dashboard')
+            return
+          }
+          
+          // Show setup form
+          setInviteData({
+            email: userData.email,
+            role: userData.role as 'admin' | 'superadmin',
+            userId: userData.id
+          })
+          setFullName(userData.full_name || '')
+          setStatus('success')
+          setMessage('Undangan valid! Silakan set password Anda.')
+          return
+        }
+      }
+      
+      // Priority 3: Check for Supabase Auth hash params (direct from email link)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const hashAccessToken = hashParams.get('access_token')
+      const hashRefreshToken = hashParams.get('refresh_token')
+      const type = hashParams.get('type')
+      
+      console.log('Hash params:', { 
+        hasAccessToken: !!hashAccessToken, 
+        hasRefreshToken: !!hashRefreshToken, 
+        type 
+      })
+      
+      if (hashAccessToken && type === 'invite') {
+        console.log('✅ Using Supabase Auth invite link from hash')
+        verifySupabaseAuthInvite(hashAccessToken, hashRefreshToken)
+        return
+      }
+      
+      // Priority 4: Old method - custom token from query param
+      if (token && typeof token === 'string') {
+        console.log('✅ Using custom token from query')
+        verifyToken()
+        return
+      }
+      
+      // No valid method found
+      console.error('❌ No valid authentication method found')
+      setStatus('error')
+      setMessage('Link undangan tidak valid. Silakan minta undangan baru.')
     }
     
-    // Check for Supabase Auth hash params (direct from email link - shouldn't happen now)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const hashAccessToken = hashParams.get('access_token')
-    const hashRefreshToken = hashParams.get('refresh_token')
-    const type = hashParams.get('type')
-    
-    if (hashAccessToken && type === 'invite') {
-      console.log('✅ Using Supabase Auth invite link from hash')
-      verifySupabaseAuthInvite(hashAccessToken, hashRefreshToken)
-      return
+    if (router.isReady) {
+      initConfirmPage()
     }
-    
-    // Otherwise use custom token from query param (old method)
-    if (!token) return
-    
-    verifyToken()
-  }, [router.query, token])
+  }, [router.isReady, router.query, token])
 
   const verifySupabaseAuthInvite = async (accessToken: string, refreshToken: string | null) => {
     try {

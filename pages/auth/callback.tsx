@@ -9,31 +9,52 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('🔍 Callback page loaded')
+        console.log('URL:', window.location.href)
+        console.log('Hash:', window.location.hash)
+        
         // Handle hash-based callback (from email links)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const accessToken = hashParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token')
         const type = hashParams.get('type')
+        const error_code = hashParams.get('error_code')
+        const error_description = hashParams.get('error_description')
 
-        console.log('Callback type:', type)
-        console.log('Has access token:', !!accessToken)
+        console.log('Callback params:', { 
+          type, 
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          error_code,
+          error_description
+        })
+        
+        // Check for errors in URL
+        if (error_code || error_description) {
+          console.error('❌ Error in callback URL:', { error_code, error_description })
+          setError(`Error: ${error_description || error_code}`)
+          setTimeout(() => router.push('/auth/login?error=callback_failed'), 3000)
+          return
+        }
 
         // If we have tokens from hash, set the session
         if (accessToken && refreshToken) {
+          console.log('✅ Setting session with tokens...')
+          
           const { data: { session }, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           })
 
           if (sessionError) {
-            console.error('Session error:', sessionError)
-            setError('Gagal memverifikasi session')
-            setTimeout(() => router.push('/auth/login?error=session_failed'), 2000)
+            console.error('❌ Session error:', sessionError)
+            setError('Gagal memverifikasi session: ' + sessionError.message)
+            setTimeout(() => router.push('/auth/login?error=session_failed'), 3000)
             return
           }
 
           if (session) {
-            console.log('Session established for:', session.user.email)
+            console.log('✅ Session established for:', session.user.email)
 
             // Check if user exists in users table
             const { data: userData, error: userError } = await supabase
@@ -43,20 +64,24 @@ export default function AuthCallback() {
               .single()
 
             if (userError || !userData) {
-              console.error('User not found in database:', userError)
+              console.error('❌ User not found in database:', userError)
               setError('User tidak ditemukan dalam sistem')
               await supabase.auth.signOut()
-              setTimeout(() => router.push('/auth/login?error=user_not_found'), 2000)
+              setTimeout(() => router.push('/auth/login?error=user_not_found'), 3000)
               return
             }
 
+            console.log('✅ User found:', userData.email, 'Last login:', userData.last_login_at)
+
             // If this is first time (no last_login_at), redirect to confirm page to set password
             if (!userData.last_login_at) {
-              console.log('First time login, redirecting to confirm page...')
+              console.log('🔐 First time login, redirecting to confirm page...')
               // Pass session tokens to confirm page
               router.push(`/auth/confirm?access_token=${accessToken}&refresh_token=${refreshToken}`)
               return
             }
+
+            console.log('✅ Returning user, updating last login...')
 
             // Activate user and update last login
             await supabase
@@ -70,22 +95,24 @@ export default function AuthCallback() {
             // Log login
             await supabase.from('auth_logs').insert({
               email: session.user.email,
-              action: 'LOGIN_FROM_INVITE',
+              action: 'LOGIN_FROM_CALLBACK',
               role: userData.role
             })
 
-            console.log('Redirecting to dashboard...')
+            console.log('✅ Redirecting to dashboard...')
             // Redirect to dashboard
             router.push('/dashboard')
             return
           }
         }
 
+        console.log('⚠️ No tokens in hash, trying to get existing session...')
+
         // Fallback: Try to get existing session
         const { data: { session }, error } = await supabase.auth.getSession()
 
         if (error) {
-          console.error('Auth callback error:', error)
+          console.error('❌ Auth callback error:', error)
           setError('Gagal memverifikasi akun')
           setTimeout(() => router.push('/auth/login?error=callback_failed'), 2000)
           return
